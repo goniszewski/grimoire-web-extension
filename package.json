@@ -1,0 +1,38 @@
+{
+  "name": "grimoire",
+  "displayName": "Grimoire",
+  "version": "0.0.1",
+  "description": "Companion extension for Grimoire.",
+  "author": "Robert Goniszewski <robert@goniszewski.com>",
+  "scripts": {
+    "dev": "plasmo dev",
+    "build": "plasmo build",
+    "package": "plasmo package"
+  },
+  "dependencies": {
+    "@tailwindcss/typography": "^0.5.10",
+    "daisyui": "^4.6.1",
+    "plasmo": "0.84.2",
+    "prettier-plugin-svelte": "^3.1.2",
+    "svelte": "^4.2.9",
+    "svelte-preprocess": "^5.1.3"
+  },
+  "devDependencies": {
+    "@ianvs/prettier-plugin-sort-imports": "4.1.1",
+    "@types/chrome": "0.0.258",
+    "@types/node": "20.11.5",
+    "autoprefixer": "^10.4.17",
+    "postcss": "^8.4.33",
+    "prettier": "3.2.4",
+    "tailwindcss": "^3.4.1",
+    "typescript": "5.3.3"
+  },
+  "manifest": {
+    "host_permissions": [
+      "https://*/*"
+    ],
+    "permissions": [
+      "activeTab"
+    ]
+  }
+}
