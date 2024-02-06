@@ -1,11 +1,16 @@
 <script lang="ts">
+	import { writable } from 'svelte/store';
 	import './style.css';
 
-	export let currentTab = {
-		url: 'https://daisyui.com/components/input/',
-		title: 'Tailwind Text Input Component — Tailwind CSS Components ( version 4 update is here )',
+	const isDev = process.env.NODE_ENV === 'development';
+
+	export let currentTab = writable({
+		url: '',
+		title: '',
 		favIconUrl: ''
-	};
+	})
+
+  export let updatedUrl = writable('');
 
 	export let categories = [
 		{
@@ -20,24 +25,55 @@
 		}
 	];
 
-	// chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-	// 	currentTab = {
-	// 		url: tabs[0].url,
-	// 		title: tabs[0].title,
-	// 		favIconUrl: tabs[0].favIconUrl
-	// 	};
-	// });
+	chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+		if (!tabs[0]) {
+			return;
+		}
+
+		$currentTab = {
+			url: tabs[0].url,
+			title: tabs[0].title,
+			favIconUrl: tabs[0].favIconUrl
+		};
+	});
+
+  $: $updatedUrl = $currentTab.url;
+
+	enum themes {
+		light = 'fantasy',
+		dark = 'dracula'
+	}
+
+	function handleThemeChange(theme: keyof typeof themes) {
+		document.documentElement.setAttribute('data-theme', themes[theme]);
+		document.cookie = `theme=${theme}; ${document.cookie}`;
+	}
+
+  function clearUrl() {
+    // clear URL from query params and hash
+    const url = new URL($updatedUrl);
+    url.search = '';
+    url.hash = '';
+    $updatedUrl = url.toString();
+  }
 </script>
 
-<div class="container flex flex-col min-w-80 min-h-96 max-w-80 border border-dotted border-red-600">
+<div
+	class={`container flex flex-col min-h-max min-w-80 max-w-80 ${isDev ? 'border border-dotted border-red-600' : ''}`}
+>
 	<!-- navbar -->
-	<div class="navbar bg-base-100">
+	<div class="flex items-center bg-base-100 px-2">
 		<div class="flex-1">
-			<span class=" text-lg font-semibold normal-case"> grimoire companion </span>
+			<span class="text-lg font-semibold normal-case"> grimoire </span>
+			<span class="text-lg normal-case"> companion </span>
 		</div>
 		<div class="flex-none">
 			<label class="swap swap-rotate">
-				<input type="checkbox" class="theme-controller" value="fantasy" />
+				<input
+					type="checkbox"
+					class="theme-controller"
+					on:change={(e) => handleThemeChange(e.target.checked ? 'dark' : 'light')}
+				/>
 				<svg
 					class="swap-on fill-current w-6 h-6"
 					xmlns="http://www.w3.org/2000/svg"
@@ -72,34 +108,59 @@
 		</div>
 	</div>
 	<!-- hero -->
-	<h2 class="text-2xl font-semibold text-center mt-2 mb-4">Add current tab</h2>
+	<h2 class="text-2xl font-semibold text-center mt-1 mb-4">Add current tab</h2>
 	<!-- form -->
 	<div
-		class="flex flex-col items-center justify-center space-y-4 card rounded-box py-8 px-2 w-full border"
+		class="flex flex-col items-center justify-center space-y-4 card rounded-box py-2 px-2 w-full"
 	>
 		<!-- url -->
-		<div class="flex w-full items-center justify-center space-x-4">
+		<div class="flex w-full items-center justify-between space-x-4">
 			<span>URL:</span>
-			<input
-				type="text"
-				value={currentTab.url}
-				disabled
-				class="input input-bordered input-sm w-full max-w-xs"
-			/>
+			<div class="flex items-center w-full max-w-60 space-x-2">
+          <label for="my_modal_6"
+					class="input input-bordered input-sm w-full max-w-60 text-left overflow-hidden whitespace-nowrap overflow-ellipsis"
+        >
+          {$currentTab.url}
+      </label>
+       
+				{#if $currentTab.favIconUrl}
+					<div class="tooltip tooltip-left" data-tip="Favicon">
+						<img src={$currentTab.favIconUrl} alt="icon" class="w-6 h-6" />
+					</div>
+				{:else}
+					<div class="tooltip tooltip-left" data-tip="Missing icon">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="icon icon-tabler icon-tabler-camera-off"
+							width="24"
+							height="24"
+							viewBox="0 0 24 24"
+							stroke-width="2"
+							stroke="currentColor"
+							fill="none"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path
+								d="M8.297 4.289a.997 .997 0 0 1 .703 -.289h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v8m-1.187 2.828c-.249 .11 -.524 .172 -.813 .172h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2h1c.298 0 .58 -.065 .834 -.181"
+							/><path d="M10.422 10.448a3 3 0 1 0 4.15 4.098" /><path d="M3 3l18 18" /></svg
+						>
+					</div>
+				{/if}
+			</div>
 		</div>
 		<!-- title -->
-		<div class="flex w-full items-center justify-center space-x-4">
+		<div class="flex w-full items-center justify-between space-x-4">
 			<span>Title:</span>
 			<input
 				type="text"
-				value={currentTab.title}
-				class="input input-bordered input-sm w-full max-w-xs"
+				value={$currentTab.title}
+				class="input input-bordered input-sm w-full max-w-60"
 			/>
 		</div>
 		<!-- category -->
-		<div class="flex w-full items-center justify-center space-x-4">
+		<div class="flex w-full items-center justify-between space-x-4">
 			<span>Category:</span>
-			<select class="select select-bordered select-sm w-full max-w-xs">
+			<select class="select select-bordered select-sm w-full max-w-60">
 				{#each categories as category}
 					<option value={category.id} style="background-color: {category.color}"
 						>{category.name}</option
@@ -108,25 +169,25 @@
 			</select>
 		</div>
 		<!-- tags -->
-		<div class="flex w-full items-center justify-center space-x-4">
+		<div class="flex w-full items-center justify-between space-x-4">
 			<span>Tags:</span>
 			<input
 				type="text"
-				class="input input-bordered input-sm w-full max-w-xs"
+				class="input input-bordered input-sm w-full max-w-60"
 				placeholder="Comma separated tags..."
 			/>
 		</div>
 		<!-- note -->
-		<div class="flex w-full items-center justify-center space-x-4">
+		<div class="flex w-full items-center justify-between space-x-4">
 			<span>Note:</span>
 			<textarea
-				class="textarea textarea-bordered textarea-sm w-full max-w-xs"
+				class="textarea textarea-bordered textarea-sm w-full max-w-60"
 				placeholder="Add a note to self..."
 			></textarea>
 		</div>
 
 		<!-- attributes -->
-		<div class="flex w-full items-center justify-center space-x-4">
+		<div class="flex w-full items-center justify-end space-x-8">
 			<!-- importance 0-3 -->
 			<div class="flex flex-col w-fit">
 				<label for="importance" class="label">Importance</label>
@@ -150,35 +211,68 @@
 				<span class="toggle-mark"></span>
 			</label>
 		</div>
+		<!-- submit -->
+		<div class="flex w-full items-center justify-between space-x-4">
+			<button class="btn btn-primary btn-md w-full text-lg">Add Bookmark</button>
+		</div>
 
-		<!-- collapse -->
+		<!-- 'Show more details' collapsed  -->
 		<div class="collapse collapse-arrow bg-base-200">
 			<input type="checkbox" />
 			<div class="collapse-title text-lg font-medium">Show more details</div>
-			<div class="collapse-content">
+			<div class="collapse-content space-y-1">
 				<!-- icon url -->
-				<div class="flex w-full items-center justify-center space-x-4">
+				<div class="flex w-full items-center justify-between space-x-4">
 					<span>Icon:</span>
+					<div class="flex space-x-1 items-center">
+						{#if $currentTab.favIconUrl}
+            <div class="tooltip" data-tip="Favicon preview">
+							<img src={$currentTab.favIconUrl} alt="icon" class="w-6 h-6" />
+              </div>
+						{/if}
+						<input
+							type="text"
+							value={$currentTab.favIconUrl}
+							placeholder="Icon URL..."
+							class="input input-bordered input-sm w-full max-w-44"
+						/>
+					</div>
+				</div>
+				<!-- main-image -->
+				<div class="flex w-full items-center justify-between space-x-4">
+					<span class="min-w-fit">Main Image:</span>
 					<input
 						type="text"
-						value={currentTab.favIconUrl}
-						class="input input-bordered input-sm w-full max-w-xs"
+						class="input input-bordered input-sm w-full max-w-44"
+						placeholder="Main image URL..."
 					/>
 				</div>
-        <!-- main-image -->
-        <div class="flex w-full items-center justify-center space-x-4">
-          <span>Main Image:</span>
-          <input
-            type="text"
-            class="input input-bordered input-sm w-full max-w-xs"
-          />
-        </div>
 				<!-- description -->
-				<div class="flex w-full items-center justify-center space-x-4">
+				<div class="flex w-full items-center justify-between space-x-4">
 					<span>Description:</span>
-					<textarea class="textarea textarea-bordered textarea-sm w-full max-w-xs"></textarea>
+					<textarea class="textarea textarea-bordered textarea-sm w-full max-w-44"
+            placeholder="Website's description (if available)"   
+          />
 				</div>
 			</div>
 		</div>
 	</div>
+</div>
+
+
+<input type="checkbox" id="my_modal_6" class="modal-toggle" />
+<div class="modal" role="dialog">
+  <div class="modal-box">
+   <textarea class="textarea textarea-bordered textarea-sm w-full" placeholder="URL cannot be empty!" bind:value={$updatedUrl}
+   />
+   <div class="modal-action">
+      <button class="btn btn-secondary btn-sm"
+      on:click={clearUrl}
+      >Clear it!</button>
+      <label for="my_modal_6" class="btn btn-primary btn-sm"
+        on:click={() => $currentTab.url = $updatedUrl}
+      
+      >Update</label>
+    </div>
+  </div>
 </div>
