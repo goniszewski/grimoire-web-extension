@@ -1,17 +1,25 @@
 <script lang="ts">
+	import { sendToBackground, sendToContentScript } from '@plasmohq/messaging';
+	import { Storage } from '@plasmohq/storage';
 	import { writable } from 'svelte/store';
 	import './style.css';
+	import { onMount } from 'svelte';
+
+	const storage = new Storage();
 
 	const isDev = process.env.NODE_ENV === 'development';
 
-	export let currentTab = writable({
+	const currentTab = writable({
 		url: '',
 		title: '',
-		favIconUrl: ''
-	})
+		favIconUrl: '',
+		contentHtml: '',
+		description: ''
+	});
 
-  export let updatedUrl = writable('');
+	const updatedUrl = writable('');
 
+	// TODO: fetch categories from the API
 	export let categories = [
 		{
 			id: 1,
@@ -31,13 +39,43 @@
 		}
 
 		$currentTab = {
+			...$currentTab,
 			url: tabs[0].url,
 			title: tabs[0].title,
 			favIconUrl: tabs[0].favIconUrl
 		};
 	});
 
-  $: $updatedUrl = $currentTab.url;
+	onMount(async () => {
+		const theme = await storage.get('theme');
+
+		if (theme) {
+			document.documentElement.setAttribute('data-theme', themes[theme]);
+		}
+
+		const res = await sendToContentScript<
+			any,
+			{
+				html: string;
+				description: string;
+			}
+		>({
+			name: 'get-webpage-content'
+		}).catch((err) => {
+			$currentTab.contentHtml = err.message;
+		});
+		$currentTab.description = 'Sent request to background script...';
+
+		if (res) {
+			$currentTab = {
+				...$currentTab,
+				contentHtml: res.html,
+				description: res.description
+			};
+		}
+	});
+
+	$: $updatedUrl = $currentTab.url;
 
 	enum themes {
 		light = 'fantasy',
@@ -46,16 +84,18 @@
 
 	function handleThemeChange(theme: keyof typeof themes) {
 		document.documentElement.setAttribute('data-theme', themes[theme]);
-		document.cookie = `theme=${theme}; ${document.cookie}`;
+		storage.set('theme', theme);
 	}
 
-  function clearUrl() {
-    // clear URL from query params and hash
-    const url = new URL($updatedUrl);
-    url.search = '';
-    url.hash = '';
-    $updatedUrl = url.toString();
-  }
+	/**
+	 * Clear the updated URL
+	 */
+	function clearUrl() {
+		const url = new URL($updatedUrl);
+		url.search = '';
+		url.hash = '';
+		$updatedUrl = url.toString();
+	}
 </script>
 
 <div
@@ -117,12 +157,13 @@
 		<div class="flex w-full items-center justify-between space-x-4">
 			<span>URL:</span>
 			<div class="flex items-center w-full max-w-60 space-x-2">
-          <label for="my_modal_6"
+				<label
+					for="url_input_modal"
 					class="input input-bordered input-sm w-full max-w-60 text-left overflow-hidden whitespace-nowrap overflow-ellipsis"
-        >
-          {$currentTab.url}
-      </label>
-       
+				>
+					{$currentTab.url}
+				</label>
+
 				{#if $currentTab.favIconUrl}
 					<div class="tooltip tooltip-left" data-tip="Favicon">
 						<img src={$currentTab.favIconUrl} alt="icon" class="w-6 h-6" />
@@ -226,9 +267,9 @@
 					<span>Icon:</span>
 					<div class="flex space-x-1 items-center">
 						{#if $currentTab.favIconUrl}
-            <div class="tooltip" data-tip="Favicon preview">
-							<img src={$currentTab.favIconUrl} alt="icon" class="w-6 h-6" />
-              </div>
+							<div class="tooltip" data-tip="Favicon preview">
+								<img src={$currentTab.favIconUrl} alt="icon" class="w-6 h-6" />
+							</div>
 						{/if}
 						<input
 							type="text"
@@ -250,29 +291,55 @@
 				<!-- description -->
 				<div class="flex w-full items-center justify-between space-x-4">
 					<span>Description:</span>
-					<textarea class="textarea textarea-bordered textarea-sm w-full max-w-44"
-            placeholder="Website's description (if available)"   
-          />
+					<textarea
+						class="textarea textarea-bordered textarea-sm w-full max-w-44"
+						placeholder="Website's description (if available)"
+						bind:value={$currentTab.description}
+					/>
+				</div>
+				<!-- debug -->
+				<div class="flex w-full items-center justify-between space-x-4">
+					<span>HTML:</span>
+					<label for="html_content_modal" class="btn btn-secondary btn-sm cursor-pointer w-full max-w-44">
+						Open
+					</label>
 				</div>
 			</div>
 		</div>
 	</div>
 </div>
 
-
-<input type="checkbox" id="my_modal_6" class="modal-toggle" />
+<!-- URL modal -->
+<input type="checkbox" id="url_input_modal" class="modal-toggle" />
 <div class="modal" role="dialog">
-  <div class="modal-box">
-   <textarea class="textarea textarea-bordered textarea-sm w-full" placeholder="URL cannot be empty!" bind:value={$updatedUrl}
-   />
-   <div class="modal-action">
-      <button class="btn btn-secondary btn-sm"
-      on:click={clearUrl}
-      >Clear it!</button>
-      <label for="my_modal_6" class="btn btn-primary btn-sm"
-        on:click={() => $currentTab.url = $updatedUrl}
-      
-      >Update</label>
-    </div>
-  </div>
+	<div class="modal-box">
+		<textarea
+			class="textarea textarea-bordered textarea-sm w-full"
+			placeholder="URL cannot be empty!"
+			bind:value={$updatedUrl}
+		/>
+		<div class="modal-action">
+			<button class="btn btn-secondary btn-sm" on:click={clearUrl}>Clear it!</button>
+			<label
+				for="url_input_modal"
+				class="btn btn-primary btn-sm"
+				on:click={() => ($currentTab.url = $updatedUrl)}>Update</label
+			>
+		</div>
+	</div>
+</div>
+
+<!-- HTML content modal -->
+<input type="checkbox" id="html_content_modal" class="modal-toggle" />
+<div class="modal" role="dialog">
+	<div class="modal-box">
+		<div
+			class={`flex flex-col overflow-y-scroll pt-1 pl-1 w-full border border-t-0 border-gray-500 rounded-b-sm h-60`}
+		>
+			{@html $currentTab.contentHtml}
+		</div>
+		<div class="modal-action">
+			<label for="html_content_modal" class="btn btn-primary btn-sm">Close</label>
+		</div>
+	</div>
 </div>

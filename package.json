@@ -10,6 +10,8 @@
     "package": "plasmo package"
   },
   "dependencies": {
+    "@plasmohq/messaging": "^0.6.2",
+    "@plasmohq/storage": "^1.9.3",
     "@tailwindcss/typography": "^0.5.10",
     "daisyui": "^4.6.1",
     "plasmo": "0.84.2",
@@ -32,7 +34,9 @@
       "https://*/*"
     ],
     "permissions": [
-      "activeTab"
+      "activeTab",
+      "scripting",
+      "storage"
     ]
   }
 }
