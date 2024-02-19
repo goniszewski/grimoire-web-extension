@@ -4,6 +4,18 @@
 	import { writable } from 'svelte/store';
 	import './style.css';
 	import { onMount } from 'svelte';
+	import type { AddBookmarkRequestBody } from '~types/add-bookmark.type';
+
+	let token: string = '';
+	let configuration: {
+		grimoireApiUrl: string;
+	} = {
+		grimoireApiUrl: ''
+	};
+
+	const categories = writable<any[]>([]);
+
+	const tags = writable<any[]>([]);
 
 	const storage = new Storage();
 
@@ -13,25 +25,26 @@
 		url: '',
 		title: '',
 		favIconUrl: '',
+		mainImage: '',
 		contentHtml: '',
-		description: ''
+		description: '',
+		category: '',
+		tags: [],
+		note: '',
+		importance: 0,
+		flagged: false
 	});
 
 	const updatedUrl = writable('');
 
-	// TODO: fetch categories from the API
-	export let categories = [
-		{
-			id: 1,
-			name: 'Uncategorized',
-			color: '#f3f4f6'
-		},
-		{
-			id: 2,
-			name: 'Programming',
-			color: '#F87171'
-		}
-	];
+	const credentials = writable({
+		emailOrUsername: null,
+		password: null
+	});
+
+	const updatedConfiguration = writable({
+		grimoireApiUrl: ''
+	});
 
 	chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
 		if (!tabs[0]) {
@@ -48,12 +61,40 @@
 
 	onMount(async () => {
 		const theme = await storage.get('theme');
+		token = await storage.get('token');
+		configuration = await storage.get('configuration');
+
+		$updatedConfiguration = { ...configuration };
+
+		if (token && configuration.grimoireApiUrl) {
+			const categoriesAndTags = await sendToBackground<
+				{
+					token: string;
+					grimoireApiUrl: string;
+				},
+				{
+					categories: any[];
+					tags: any[];
+				}
+			>({
+				name: 'fetch-categories-tags',
+				body: {
+					token,
+					grimoireApiUrl: configuration.grimoireApiUrl
+				}
+			});
+
+			if (categoriesAndTags.categories && categoriesAndTags.tags) {
+				$categories = categoriesAndTags.categories;
+				$tags = categoriesAndTags.tags;
+			}
+		}
 
 		if (theme) {
 			document.documentElement.setAttribute('data-theme', themes[theme]);
 		}
 
-		const res = await sendToContentScript<
+		const contentScriptResponse = await sendToContentScript<
 			any,
 			{
 				html: string;
@@ -63,29 +104,11 @@
 			name: 'get-webpage-content'
 		});
 
-		// const res = await sendToBackground<
-		// 	{
-		// 		url: string;
-		// 	},
-		// 	{
-		// 		html: string;
-		// 		description: string;
-		// 	}
-		// >({
-		// 	name: 'fetch-bookmark-data',
-		// 	body: {
-		// 		url: $currentTab.url
-		// 	}
-		// }).then((res) => ({
-		// 	html: res.html,
-		// 	description: res.description
-		// }));
-
-		if (res) {
+		if (contentScriptResponse) {
 			$currentTab = {
 				...$currentTab,
-				contentHtml: res.html,
-				description: res.description
+				contentHtml: contentScriptResponse.html,
+				description: contentScriptResponse.description
 			};
 		}
 	});
@@ -100,6 +123,84 @@
 	function handleThemeChange(theme: keyof typeof themes) {
 		document.documentElement.setAttribute('data-theme', themes[theme]);
 		storage.set('theme', theme);
+	}
+
+	async function signIn() {
+		const { token: newToken } = await sendToBackground<
+			{
+				emailOrUsername: string;
+				password: string;
+				grimoireApiUrl: string;
+			},
+			{
+				token: string;
+			}
+		>({
+			name: 'sign-in',
+			body: {
+				emailOrUsername: $credentials.emailOrUsername,
+				password: $credentials.password,
+				grimoireApiUrl: $updatedConfiguration.grimoireApiUrl ?? configuration.grimoireApiUrl
+			}
+		});
+
+		if (newToken) {
+			token = newToken;
+			storage.set('token', newToken);
+		}
+	}
+
+	function signOut() {
+		storage.remove('token');
+		token = '';
+	}
+
+	async function onAddBookmark() {
+		const response = await sendToBackground<
+			{
+				token: string;
+				grimoireApiUrl: string;
+				bookmark: AddBookmarkRequestBody;
+			},
+			{
+				bookmark: any;
+			}
+		>({
+			name: 'add-bookmark',
+			body: {
+				token,
+				grimoireApiUrl: $updatedConfiguration.grimoireApiUrl ?? configuration.grimoireApiUrl,
+				bookmark: {
+					url: $currentTab.url,
+					title: $currentTab.title,
+					icon_url: $currentTab.favIconUrl,
+					main_image_url: $currentTab.mainImage,
+					content_html: $currentTab.contentHtml,
+					description: $currentTab.description,
+					category: $currentTab.category,
+					tags: $currentTab.tags,
+					note: $currentTab.note,
+					importance: $currentTab.importance,
+					flagged: $currentTab.flagged
+				}
+			}
+		});
+
+		if (response.bookmark) {
+			console.log('Bookmark added:', response.bookmark);
+		}
+	}
+
+	async function onConfigurationChange() {
+		// const grimoireApiUrlValidation = {
+		// 	isDifferentThanBefore: $updatedConfiguration.grimoireApiUrl !== configuration.grimoireApiUrl,
+		// 	hasValidStructure:
+		// 		$updatedConfiguration.grimoireApiUrl !== '' &&
+		// 		/^(http|https):\/\/.*\/$/.test($updatedConfiguration.grimoireApiUrl)
+		// };
+
+		storage.set('configuration', $updatedConfiguration);
+		configuration = { ...configuration, ...$updatedConfiguration };
 	}
 
 	/**
@@ -212,20 +313,27 @@
 					<span>Title:</span>
 					<input
 						type="text"
-						value={$currentTab.title}
 						class="input input-bordered input-sm w-full max-w-60"
+						bind:value={$currentTab.title}
 					/>
 				</div>
 				<!-- category -->
 				<div class="flex w-full items-center justify-between space-x-4">
 					<span>Category:</span>
-					<select class="select select-bordered select-sm w-full max-w-60">
-						{#each categories as category}
-							<option value={category.id} style="background-color: {category.color}"
-								>{category.name}</option
-							>
-						{/each}
-					</select>
+					{#if $categories}
+						<select
+							class="select select-bordered select-sm w-full max-w-60"
+							bind:value={$currentTab.category}
+						>
+							{#each $categories as category (category.id)}
+								<option
+									value={category.id}
+									style="background-color: {category.color}"
+									selected={category.initial === true}>{category.name}</option
+								>
+							{/each}
+						</select>
+					{/if}
 				</div>
 				<!-- tags -->
 				<div class="flex w-full items-center justify-between space-x-4">
@@ -242,6 +350,7 @@
 					<textarea
 						class="textarea textarea-bordered textarea-sm w-full max-w-60"
 						placeholder="Add a note to self..."
+						bind:value={$currentTab.note}
 					></textarea>
 				</div>
 
@@ -275,19 +384,19 @@
 					<!-- flag it -->
 					<label class="cursor-pointer">
 						<label for="flag" class="label">Flagged</label>
-						<input type="checkbox" class="toggle toggle-primary" />
-						<span class="toggle-mark"></span>
-					</label>
-					<!-- unread -->
-					<label class="cursor-pointer">
-						<label for="unread" class="label">Unread</label>
-						<input type="checkbox" class="toggle toggle-primary" />
+						<input
+							type="checkbox"
+							class="toggle toggle-primary"
+							bind:checked={$currentTab.flagged}
+						/>
 						<span class="toggle-mark"></span>
 					</label>
 				</div>
 				<!-- submit -->
 				<div class="flex w-full items-center justify-between space-x-4">
-					<button class="btn btn-primary btn-md w-full text-lg">Add Bookmark</button>
+					<button class="btn btn-primary btn-md w-full text-lg" on:click={onAddBookmark}
+						>Add Bookmark</button
+					>
 				</div>
 
 				<!-- 'Show more details' collapsed  -->
@@ -306,7 +415,7 @@
 								{/if}
 								<input
 									type="text"
-									value={$currentTab.favIconUrl}
+									bind:value={$currentTab.favIconUrl}
 									placeholder="Icon URL..."
 									class="input input-bordered input-sm w-full max-w-44"
 								/>
@@ -319,6 +428,7 @@
 								type="text"
 								class="input input-bordered input-sm w-full max-w-44"
 								placeholder="Main image URL..."
+								bind:value={$currentTab.mainImage}
 							/>
 						</div>
 						<!-- description -->
@@ -349,52 +459,71 @@
 		<label for="my-drawer-4" aria-label="close sidebar" class="drawer-overlay"></label>
 		<ul class="menu p-4 w-72 min-h-full bg-base-100 text-base-content">
 			<!-- Sidebar content here -->
-			<div class="collapse collapse-arrow bg-base-200">
-				<input type="radio" name="my-accordion-2" checked={true} />
-				<div class="collapse-title text-xl font-medium">Connection Details</div>
-				<div class="collapse-content">
-					<label class="form-control w-full max-w-xs">
-						<div class="label">
-							<span class="label-text">Grimoire API URL</span>
-						</div>
-						<input
-							type="text"
-							placeholder="https://<GRIMOIRE_URL>/api"
-							class="input input-sm input-bordered w-full max-w-xs"
-						/>
-
+			<div class="w-full h-full flex flex-col space-y-4">
+				<div class="collapse collapse-arrow bg-base-200">
+					<input type="radio" name="my-accordion-2" checked={true} />
+					<div class="collapse-title text-xl font-medium">Connection Details</div>
+					<div class="collapse-content">
 						<label class="form-control w-full max-w-xs">
 							<div class="label">
-								<span class="label-text">Username / e-mail</span>
+								<span class="label-text">Grimoire API URL</span>
 							</div>
 							<input
 								type="text"
-								placeholder="Type here"
+								placeholder="https://<GRIMOIRE_URL>/api"
 								class="input input-sm input-bordered w-full max-w-xs"
+								bind:value={$updatedConfiguration.grimoireApiUrl}
 							/>
-						</label><label class="form-control w-full max-w-xs">
-							<div class="label">
-								<span class="label-text">Password</span>
-							</div>
-							<input
-								type="password"
-								placeholder="Type here"
-								class="input input-sm input-bordered w-full max-w-xs"
-							/>
+
+							{#if !token}
+								<label class="form-control w-full max-w-xs">
+									<div class="label">
+										<span class="label-text">Username / e-mail</span>
+									</div>
+									<input
+										type="text"
+										placeholder="Type here"
+										class="input input-sm input-bordered w-full max-w-xs"
+										bind:value={$credentials.emailOrUsername}
+									/>
+								</label><label class="form-control w-full max-w-xs">
+									<div class="label">
+										<span class="label-text">Password</span>
+									</div>
+									<input
+										type="password"
+										placeholder="Type here"
+										class="input input-sm input-bordered w-full max-w-xs"
+										bind:value={$credentials.password}
+									/>
+								</label>
+								<!-- Sign in button -->
+								<button class="btn btn-primary btn-sm w-full max-w-xs my-4" on:click={signIn}
+									>Sign in</button
+								>
+							{:else}
+								<button class="btn btn-secondary btn-sm w-full max-w-xs my-4" on:click={signOut}
+									>Sign out</button
+								>
+								<!-- Token: {token} -->
+							{/if}
 						</label>
-					</label>
+					</div>
+
+					<!-- <div class="collapse collapse-arrow bg-base-200">
+					<input type="radio" name="my-accordion-2" /> 
+					<div class="collapse-title text-xl font-medium">
+					  Click to open this one and close others
+					</div>
+					<div class="collapse-content"> 
+					  <p>hello</p>
+					</div>
+				  </div> -->
 				</div>
+				<button class="btn btn-primary btn-sm w-20 mt-auto ml-auto" on:click={onConfigurationChange}
+					>Save</button
+				>
 			</div>
-			<!-- <div class="collapse collapse-arrow bg-base-200">
-				<input type="radio" name="my-accordion-2" /> 
-				<div class="collapse-title text-xl font-medium">
-				  Click to open this one and close others
-				</div>
-				<div class="collapse-content"> 
-				  <p>hello</p>
-				</div>
-			  </div> -->
-			  <button class="btn btn-primary btn-sm w-20 mt-auto ml-auto">Save</button>
 		</ul>
 	</div>
 </div>
