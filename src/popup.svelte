@@ -4,47 +4,12 @@
 	import { writable } from 'svelte/store';
 	import './style.css';
 	import { onMount } from 'svelte';
-	import type { AddBookmarkRequestBody } from '~types/add-bookmark.type';
-
-	let token: string = '';
-	let configuration: {
-		grimoireApiUrl: string;
-	} = {
-		grimoireApiUrl: ''
-	};
-
-	const categories = writable<any[]>([]);
-
-	const tags = writable<any[]>([]);
-
-	const storage = new Storage();
+	import type { AddBookmarkRequestBody } from '~shared/types/add-bookmark.type';
+	import { themes } from '~shared/enums';
 
 	const isDev = process.env.NODE_ENV === 'development';
 
-	const currentTab = writable({
-		url: '',
-		title: '',
-		favIconUrl: '',
-		mainImage: '',
-		contentHtml: '',
-		description: '',
-		category: '',
-		tags: [],
-		note: '',
-		importance: 0,
-		flagged: false
-	});
-
-	const updatedUrl = writable('');
-
-	const credentials = writable({
-		emailOrUsername: null,
-		password: null
-	});
-
-	const updatedConfiguration = writable({
-		grimoireApiUrl: ''
-	});
+	const storage = new Storage();
 
 	chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
 		if (!tabs[0]) {
@@ -55,14 +20,55 @@
 			...$currentTab,
 			url: tabs[0].url,
 			title: tabs[0].title,
-			favIconUrl: tabs[0].favIconUrl
+			icon_url: tabs[0].favIconUrl
 		};
 	});
+
+	let token: string = '';
+	let configuration: {
+		grimoireApiUrl: string;
+	} = {
+		grimoireApiUrl: ''
+	};
+
+	const categories = writable<any[]>([]);
+	const tags = writable<any[]>([]);
+	const currentTab = writable({
+		url: '',
+		title: '',
+		icon_url: '',
+		mainImage: '',
+		contentHtml: '',
+		description: '',
+		category: '',
+		tags: [],
+		note: '',
+		importance: 0,
+		flagged: false
+	});
+	const updatedUrl = writable('');
+	const credentials = writable({
+		emailOrUsername: null,
+		password: null
+	});
+	const updatedConfiguration = writable({
+		grimoireApiUrl: ''
+	});
+	const status = writable({
+		isSignedIn: true,
+		isGrimoireApiReachable: true
+	});
+
+	$: $updatedUrl = $currentTab.url;
 
 	onMount(async () => {
 		const theme = await storage.get('theme');
 		token = await storage.get('token');
 		configuration = await storage.get('configuration');
+
+		if (theme) {
+			document.documentElement.setAttribute('data-theme', themes[theme]);
+		}
 
 		$updatedConfiguration = { ...configuration };
 
@@ -87,11 +93,24 @@
 			if (categoriesAndTags.categories && categoriesAndTags.tags) {
 				$categories = categoriesAndTags.categories;
 				$tags = categoriesAndTags.tags;
-			}
-		}
 
-		if (theme) {
-			document.documentElement.setAttribute('data-theme', themes[theme]);
+				$currentTab.category = $categories.find((category) => category.initial === true)?.id;
+			} else {
+				const isGrimoireApiReachable = await validateGrimoireApiUrl(
+					$updatedConfiguration.grimoireApiUrl ?? configuration.grimoireApiUrl
+				);
+
+				$status = {
+					...$status,
+					isGrimoireApiReachable,
+					isSignedIn: false
+				};
+			}
+		} else {
+			$status = {
+				...$status,
+				isSignedIn: false
+			};
 		}
 
 		const contentScriptResponse = await sendToContentScript<
@@ -113,11 +132,33 @@
 		}
 	});
 
-	$: $updatedUrl = $currentTab.url;
+	async function validateGrimoireApiUrl(url: string) {
+		const healthCheck = await sendToBackground<
+			{
+				grimoireApiUrl: string;
+			},
+			{
+				valid: boolean;
+			}
+		>({
+			name: 'validate-grimoire-api-url',
+			body: {
+				grimoireApiUrl: url
+			}
+		});
 
-	enum themes {
-		light = 'fantasy',
-		dark = 'dracula'
+		return healthCheck.valid;
+	}
+
+	async function handleGrimoireApiCheck() {
+		const isGrimoireApiReachable = await validateGrimoireApiUrl(
+			$updatedConfiguration.grimoireApiUrl ?? configuration.grimoireApiUrl
+		);
+
+		$status = {
+			...$status,
+			isGrimoireApiReachable
+		};
 	}
 
 	function handleThemeChange(theme: keyof typeof themes) {
@@ -173,7 +214,7 @@
 				bookmark: {
 					url: $currentTab.url,
 					title: $currentTab.title,
-					icon_url: $currentTab.favIconUrl,
+					icon_url: $currentTab.icon_url,
 					main_image_url: $currentTab.mainImage,
 					content_html: $currentTab.contentHtml,
 					description: $currentTab.description,
@@ -266,8 +307,38 @@
 					</label>
 				</div>
 			</div>
-			<!-- hero -->
-			<h2 class="text-2xl font-semibold text-center mt-1 mb-4">Add current tab</h2>
+			<!-- statuses -->
+			{#if !$status.isGrimoireApiReachable}
+				<div class="flex items-center justify-center bg-red-600 text-white text-lg font-semibold">
+					<span class=" text-base-100">Grimoire API is not reachable!</span>
+					<button class="btn btn-link" on:click={() => handleGrimoireApiCheck()}>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="icon icon-tabler icon-tabler-refresh"
+							width="24"
+							height="24"
+							viewBox="0 0 24 24"
+							stroke-width="1.5"
+							stroke="currentColor"
+							fill="none"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path
+								d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"
+							/><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" /></svg
+						>
+					</button>
+				</div>
+			{:else if !token}
+				<div
+					class="flex items-center justify-center bg-orange-400 text-white text-lg font-semibold"
+				>
+					<span class=" text-base-100">User not signed in!</span>
+				</div>
+			{:else}
+				<!-- hero -->
+				<h2 class="text-2xl font-semibold text-center mt-1 mb-4">Add current tab</h2>
+			{/if}
 			<!-- form -->
 			<div
 				class="flex flex-col items-center justify-center space-y-4 card rounded-box py-2 px-2 w-full"
@@ -283,9 +354,9 @@
 							{$currentTab.url}
 						</label>
 
-						{#if $currentTab.favIconUrl}
+						{#if $currentTab.icon_url}
 							<div class="tooltip tooltip-left" data-tip="Favicon">
-								<img src={$currentTab.favIconUrl} alt="icon" class="w-6 h-6" />
+								<img src={$currentTab.icon_url} alt="icon" class="w-6 h-6" />
 							</div>
 						{:else}
 							<div class="tooltip tooltip-left" data-tip="Missing icon">
@@ -408,14 +479,14 @@
 						<div class="flex w-full items-center justify-between space-x-4">
 							<span>Icon:</span>
 							<div class="flex space-x-1 items-center">
-								{#if $currentTab.favIconUrl}
+								{#if $currentTab.icon_url}
 									<div class="tooltip" data-tip="Favicon preview">
-										<img src={$currentTab.favIconUrl} alt="icon" class="w-6 h-6" />
+										<img src={$currentTab.icon_url} alt="icon" class="w-6 h-6" />
 									</div>
 								{/if}
 								<input
 									type="text"
-									bind:value={$currentTab.favIconUrl}
+									bind:value={$currentTab.icon_url}
 									placeholder="Icon URL..."
 									class="input input-bordered input-sm w-full max-w-44"
 								/>
@@ -474,6 +545,9 @@
 								class="input input-sm input-bordered w-full max-w-xs"
 								bind:value={$updatedConfiguration.grimoireApiUrl}
 							/>
+							{#if !$status.isGrimoireApiReachable}
+								<p class="text-red-600 py-2">Grimoire API is not reachable!</p>
+							{/if}
 
 							{#if !token}
 								<label class="form-control w-full max-w-xs">
@@ -510,6 +584,13 @@
 						</label>
 					</div>
 
+					<div class="collapse collapse-arrow bg-base-200">
+						<input type="radio" name="my-accordion-2" />
+						<div class="collapse-title text-xl font-medium">Other options</div>
+						<div class="collapse-content">
+							<p>hello</p>
+						</div>
+					</div>
 					<!-- <div class="collapse collapse-arrow bg-base-200">
 					<input type="radio" name="my-accordion-2" /> 
 					<div class="collapse-title text-xl font-medium">
