@@ -3,28 +3,26 @@ import { type PlasmoMessaging } from '@plasmohq/messaging';
 export {};
 
 const handler: PlasmoMessaging.MessageHandler<{
-    grimoireApiUrl: string;
+	grimoireApiUrl: string;
 }> = async (req, res) => {
-	const {grimoireApiUrl} = {
-        ...req.body
-    }
+	const { grimoireApiUrl } = req.body;
 
-    try {
-        await fetch(`${grimoireApiUrl}/health`, {
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json"
-            }
-        });
+	try {
+		await fetch(`${grimoireApiUrl}/health`, {
+			method: 'GET',
+			headers: {
+				'Content-Type': 'application/json'
+			}
+		});
 
-        res.send({
-            valid: true
-        });
-    } catch (error) {
-        res.send({
-            valid: false
-        });
-    }
+		res.send({
+			valid: true
+		});
+	} catch (error) {
+		res.send({
+			valid: false
+		});
+	}
 };
 
 export default handler;
