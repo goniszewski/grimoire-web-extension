@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { sendToBackground, sendToContentScript } from '@plasmohq/messaging';
 	import { Storage } from '@plasmohq/storage';
-	import { writable } from 'svelte/store';
-	import './style.css';
 	import { onMount } from 'svelte';
-	import type { AddBookmarkRequestBody } from '~shared/types/add-bookmark.type';
+	import { writable } from 'svelte/store';
+	import { logger } from '~shared/debug-logs';
 	import { themes } from '~shared/enums';
+	import type { AddBookmarkRequestBody } from '~shared/types/add-bookmark.type';
+	import './style.css';
 
 	const isDev = process.env.NODE_ENV === 'development';
 
@@ -13,6 +14,8 @@
 
 	chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
 		if (!tabs[0]) {
+			logger.error('chrome.tabs.query', 'No active tab found');
+
 			return;
 		}
 
@@ -22,6 +25,8 @@
 			title: tabs[0].title,
 			icon_url: tabs[0].favIconUrl
 		};
+
+		logger.debug('chrome.tabs.query', 'active tab', $currentTab);
 	});
 
 	let token: string = '';
@@ -62,6 +67,8 @@
 	$: $updatedUrl = $currentTab.url;
 
 	onMount(async () => {
+		logger.debug('popup.onMount', 'init');
+
 		const theme = await storage.get('theme');
 		token = await storage.get('token');
 		configuration = await storage.get('configuration');
@@ -71,6 +78,8 @@
 		}
 
 		$updatedConfiguration = { ...configuration };
+
+		logger.debug('onMount', 'loaded storage data', { theme, token: !!token, configuration });
 
 		if (token && configuration.grimoireApiUrl) {
 			const categoriesAndTags = await sendToBackground<
@@ -90,11 +99,15 @@
 				}
 			});
 
+			logger.debug('onMount', 'fetching categories and tags response', categoriesAndTags);
+
 			if (categoriesAndTags.categories && categoriesAndTags.tags) {
 				$categories = categoriesAndTags.categories;
 				$tags = categoriesAndTags.tags;
 
 				$currentTab.category = $categories.find((category) => category.initial === true)?.id;
+
+				logger.debug('onMount', 'categories and tags', { categories: $categories, tags: $tags });
 			} else {
 				const isGrimoireApiReachable = await validateGrimoireApiUrl(
 					$updatedConfiguration.grimoireApiUrl ?? configuration.grimoireApiUrl
@@ -113,6 +126,8 @@
 			};
 		}
 
+		logger.debug('onMount', 'Grimoire API status', $status);
+
 		const contentScriptResponse = await sendToContentScript<
 			any,
 			{
@@ -129,6 +144,8 @@
 				contentHtml: contentScriptResponse.html,
 				description: contentScriptResponse.description
 			};
+
+			logger.debug('onMount', 'contentScriptResponse', contentScriptResponse);
 		}
 	});
 
@@ -188,15 +205,21 @@
 		if (newToken) {
 			token = newToken;
 			storage.set('token', newToken);
+
+			logger.debug('signIn', 'User signed in');
 		}
 	}
 
 	function signOut() {
 		storage.remove('token');
 		token = '';
+
+		logger.debug('signOut', 'User signed out');
 	}
 
 	async function onAddBookmark() {
+		logger.debug('onAddBookmark', 'init', $currentTab);
+
 		const response = await sendToBackground<
 			{
 				token: string;
@@ -228,7 +251,7 @@
 		});
 
 		if (response.bookmark) {
-			console.log('Bookmark added:', response.bookmark);
+			logger.debug('onAddBookmark', 'Bookmark added', response.bookmark);
 		}
 	}
 

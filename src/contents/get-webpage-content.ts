@@ -1,11 +1,21 @@
-  import {listen} from "@plasmohq/messaging/message"
+import { listen } from '@plasmohq/messaging/message';
+import { logger } from '~shared/debug-logs';
 
 listen(async (_req, res) => {
-  const html = window.document.documentElement.innerHTML
-  const description = window.document.querySelector("meta[name='description']")?.getAttribute("content")
+	logger.debug('background.messages.get-webpage-content', 'Fetching webpage content');
 
-  res.send({
-    html,
-    description
-  })
-})  
+	const html = window.document.documentElement.innerHTML;
+	const description = window.document
+		.querySelector("meta[name='description']")
+		?.getAttribute('content');
+
+	logger.debug('background.messages.get-webpage-content', 'Fetched webpage content', {
+		html,
+		description
+	});
+
+	res.send({
+		html,
+		description
+	});
+});

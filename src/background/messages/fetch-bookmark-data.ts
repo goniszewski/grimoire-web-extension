@@ -1,11 +1,11 @@
-import { sendToContentScript, type PlasmoMessaging } from '@plasmohq/messaging';
+import { type PlasmoMessaging } from '@plasmohq/messaging';
 
 export {};
 
 const handler: PlasmoMessaging.MessageHandler = async (req, res) => {
 	const content = {
-        ...req.body
-    }
+		...req.body
+	};
 
 	res.send({
 		content

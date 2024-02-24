@@ -1,5 +1,6 @@
 import { type PlasmoMessaging } from '@plasmohq/messaging';
-import type { AddBookmarkRequestBody } from '~types/add-bookmark.type';
+import type { AddBookmarkRequestBody } from '~shared/types/add-bookmark.type';
+import { logger } from '~shared/debug-logs';
 
 export const handler: PlasmoMessaging.MessageHandler<{
 	grimoireApiUrl: string;
@@ -9,6 +10,10 @@ export const handler: PlasmoMessaging.MessageHandler<{
 	const { grimoireApiUrl, token, bookmark } = {
 		...req.body
 	};
+	logger.debug('background.messages.add-bookmark', 'Adding bookmark', {
+		grimoireApiUrl,
+		bookmark
+	});
 
 	try {
 		const res = await fetch(`${grimoireApiUrl}/bookmarks`, {
@@ -20,10 +25,14 @@ export const handler: PlasmoMessaging.MessageHandler<{
 			body: JSON.stringify(bookmark)
 		}).then((response) => response.json());
 
+		logger.debug('background.messages.add-bookmark', 'Grimoire API response', res);
+
 		res.send({
 			res
 		});
 	} catch (error) {
+		logger.error('background.messages.add-bookmark', 'Error adding bookmark', error);
+
 		res.send({
 			res: null
 		});
