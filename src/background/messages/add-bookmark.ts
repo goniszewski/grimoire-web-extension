@@ -7,34 +7,33 @@ export const handler: PlasmoMessaging.MessageHandler<{
 	token: string;
 	bookmark: AddBookmarkRequestBody;
 }> = async (req, res) => {
-	const { grimoireApiUrl, token, bookmark } = {
-		...req.body
-	};
+	const { grimoireApiUrl, token, bookmark } = req.body;
+
 	logger.debug('background.messages.add-bookmark', 'Adding bookmark', {
 		grimoireApiUrl,
 		bookmark
 	});
 
 	try {
-		const res = await fetch(`${grimoireApiUrl}/bookmarks`, {
+		const response = await fetch(`${grimoireApiUrl}/bookmarks`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
 				Authorization: `Bearer ${token}`
 			},
 			body: JSON.stringify(bookmark)
-		}).then((response) => response.json());
+		}).then((data) => data.json());
 
-		logger.debug('background.messages.add-bookmark', 'Grimoire API response', res);
+		logger.debug('background.messages.add-bookmark', 'Grimoire API response', response);
 
 		res.send({
-			res
+			bookmark: response?.bookmark
 		});
 	} catch (error) {
-		logger.error('background.messages.add-bookmark', 'Error adding bookmark', error);
+		logger.error('background.messages.add-bookmark', 'Error adding bookmark', error?.message);
 
 		res.send({
-			res: null
+			bookmark: null
 		});
 	}
 };

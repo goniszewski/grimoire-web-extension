@@ -20,6 +20,7 @@
 		credentials,
 		status
 	} from '~shared/stores';
+	import TagsInput from '~shared/components/TagsInput.component.svelte';
 
 	const isDev = process.env.NODE_ENV === 'development';
 
@@ -50,6 +51,8 @@
 	};
 
 	$: $updatedUrl = $currentTab.url;
+
+	$: logger.debug('popup', 'currentTab (update)', $currentTab);
 
 	onMount(async () => {
 		logger.debug('popup.onMount', 'init');
@@ -136,9 +139,9 @@
 
 	async function signIn() {
 		const newToken = await handleSignIn(
+			$updatedConfiguration.grimoireApiUrl ?? configuration.grimoireApiUrl,
 			$credentials.emailOrUsername,
-			$credentials.password,
-			$updatedConfiguration.grimoireApiUrl ?? configuration.grimoireApiUrl
+			$credentials.password
 		);
 
 		if (newToken) {
@@ -183,7 +186,7 @@
 					{status}
 					grimoireApiUrl={$updatedConfiguration.grimoireApiUrl ?? configuration.grimoireApiUrl}
 				/>
-			{:else if !token}
+			{:else if !token || !$status.isSignedIn}
 				<div
 					class="flex items-center justify-center bg-orange-400 text-white text-lg font-semibold"
 				>
@@ -263,11 +266,12 @@
 				<!-- tags -->
 				<div class="flex w-full items-center justify-between space-x-4">
 					<span>Tags:</span>
-					<input
+					<!-- <input
 						type="text"
 						class="input input-bordered input-sm w-full max-w-60"
 						placeholder="Comma separated tags..."
-					/>
+					/> -->
+					<TagsInput fetchedTags={$tags.map((tag) => tag.name)} selectedTags={currentTab} />
 				</div>
 				<!-- note -->
 				<div class="flex w-full items-center justify-between space-x-4">
@@ -509,3 +513,20 @@
 		</div>
 	</div>
 </div>
+
+<style>
+	:global(div.multiselect) {
+		min-width: 15rem;
+		max-width: 15rem !important;
+		border: 1px solid oklch(var(--bc) / 0.2) !important;
+		border-radius: 0.5rem !important;
+	}
+
+	:global(div.multiselect > ul.options) {
+		background-color: oklch(var(--b1)) !important;
+	}
+
+	:global(div.multiselect > ul.options > li) {
+		color: oklch(var(--bc)) !important;
+	}
+</style>

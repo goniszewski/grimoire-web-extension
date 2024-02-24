@@ -12,11 +12,12 @@ const handler: PlasmoMessaging.MessageHandler<{
 
 	logger.debug('background.messages.sign-in', 'Signing in', {
 		grimoireApiUrl,
-		emailOrUsername
+		emailOrUsername,
+		password: `${password.slice(0, 2)}***${password.slice(-2)}`
 	});
 
 	try {
-		const { token } = await fetch(`${grimoireApiUrl}/auth`, {
+		const response = await fetch(`${grimoireApiUrl}/auth`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'
@@ -25,18 +26,20 @@ const handler: PlasmoMessaging.MessageHandler<{
 				login: emailOrUsername,
 				password
 			})
-		}).then((response) => response.json());
+		}).then((res) => res.json());
+
+		const { token, ...responseWithoutToken } = response;
 
 		logger.debug('background.messages.sign-in', 'Grimoire API response', {
-			grimoireApiUrl,
-			emailOrUsername
+			token: !!token,
+			response: responseWithoutToken
 		});
 
 		res.send({
 			token
 		});
 	} catch (error) {
-		logger.error('background.messages.sign-in', 'Error signing in', error);
+		logger.error('background.messages.sign-in', 'Error signing in', error?.message);
 
 		res.send({
 			token: null
