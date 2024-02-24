@@ -1,5 +1,5 @@
 import { type PlasmoMessaging } from '@plasmohq/messaging';
-import { logger } from '~shared/debug-logs';
+import { logger } from '~shared/utils/debug-logs';
 
 export {};
 

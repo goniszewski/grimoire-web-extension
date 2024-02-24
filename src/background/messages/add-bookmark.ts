@@ -1,6 +1,6 @@
 import { type PlasmoMessaging } from '@plasmohq/messaging';
 import type { AddBookmarkRequestBody } from '~shared/types/add-bookmark.type';
-import { logger } from '~shared/debug-logs';
+import { logger } from '~shared/utils/debug-logs';
 
 export const handler: PlasmoMessaging.MessageHandler<{
 	grimoireApiUrl: string;

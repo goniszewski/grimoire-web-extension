@@ -1,5 +1,5 @@
 import { listen } from '@plasmohq/messaging/message';
-import { logger } from '~shared/debug-logs';
+import { logger } from '~shared/utils/debug-logs';
 
 listen(async (_req, res) => {
 	logger.debug('background.messages.get-webpage-content', 'Fetching webpage content');
