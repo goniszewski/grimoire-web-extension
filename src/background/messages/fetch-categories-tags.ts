@@ -22,7 +22,8 @@ const handler: PlasmoMessaging.MessageHandler<{
 			}
 		}).then((response) => response.json());
 
-		logger.debug('background.messages.fetch-categories-tags', 'Fetched categories', categories);
+		if (categories)
+			logger.debug('background.messages.fetch-categories-tags', 'Fetched categories', categories);
 
 		const { tags } = await fetch(`${grimoireApiUrl}/tags`, {
 			method: 'GET',
@@ -32,7 +33,7 @@ const handler: PlasmoMessaging.MessageHandler<{
 			}
 		}).then((response) => response.json());
 
-		logger.debug('background.messages.fetch-categories-tags', 'Fetched tags', tags);
+		if (tags) logger.debug('background.messages.fetch-categories-tags', 'Fetched tags', tags);
 
 		res.send({
 			categories,

@@ -30,12 +30,15 @@ const handler: PlasmoMessaging.MessageHandler<{
 
 		const { token, ...responseWithoutToken } = response;
 
-		logger.debug('background.messages.sign-in', 'Grimoire API response', {
-			token: !!token,
-			response: responseWithoutToken
-		});
+		if (!response.success) {
+			logger.error('background.messages.sign-in', 'Error signing in', responseWithoutToken);
 
-		res.send({
+			return res.send({
+				token: null
+			});
+		}
+
+		return res.send({
 			token
 		});
 	} catch (error) {

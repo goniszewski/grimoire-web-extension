@@ -39,7 +39,7 @@ export const logger = {
 		if (process.env.PLASMO_PUBLIC_LOGGER_URL) {
 			sendRequestToLogger('info', job, {
 				message,
-				data
+				data: JSON.stringify(data)
 			});
 		}
 	},
@@ -56,7 +56,7 @@ export const logger = {
 		if (process.env.PLASMO_PUBLIC_LOGGER_URL) {
 			sendRequestToLogger('error', job, {
 				message,
-				data
+				data: JSON.stringify(data)
 			});
 		}
 	},
@@ -73,7 +73,7 @@ export const logger = {
 		if (process.env.PLASMO_PUBLIC_LOGGER_URL) {
 			sendRequestToLogger('debug', job, {
 				message,
-				data
+				data: JSON.stringify(data)
 			});
 		}
 	}

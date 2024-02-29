@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { sendToBackground, sendToContentScript } from '@plasmohq/messaging';
 	import { Storage } from '@plasmohq/storage';
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { logger } from '~shared/utils/debug-logs';
 	import { themes } from '~shared/enums';
 	import './style.css';
@@ -10,16 +10,7 @@
 	import { clearUrl } from '~shared/utils/clear-url.util';
 	import { handleSignIn } from '~shared/handlers/handle-sign-in.handler';
 	import Navbar from '~shared/components/Navbar.component.svelte';
-	import StatusNotConnected from '~shared/components/StatusNotConnected.svelte';
-	import {
-		categories,
-		currentTab,
-		tags,
-		updatedConfiguration,
-		updatedUrl,
-		credentials,
-		status
-	} from '~shared/stores';
+	import { categories, currentTab, tags, updatedUrl, credentials, status } from '~shared/stores';
 	import TagsInput from '~shared/components/TagsInput.component.svelte';
 
 	const isDev = process.env.NODE_ENV === 'development';
@@ -49,10 +40,51 @@
 	} = {
 		grimoireApiUrl: ''
 	};
+	let validationInterval: NodeJS.Timeout;
 
 	$: $updatedUrl = $currentTab.url;
+	// $: logger.debug('popup', 'currentTab (update)', $currentTab);
 
-	$: logger.debug('popup', 'currentTab (update)', $currentTab);
+	async function onValidateGrimoireApiUrl() {
+		const isGrimoireApiReachable = await validateGrimoireApiUrl(configuration.grimoireApiUrl);
+
+		$status = {
+			...$status,
+			isGrimoireApiReachable
+		};
+	}
+
+	async function fetchUserData() {
+		const categoriesAndTags = await sendToBackground<
+			{
+				token: string;
+				grimoireApiUrl: string;
+			},
+			{
+				categories: any[];
+				tags: any[];
+			}
+		>({
+			name: 'fetch-categories-tags',
+			body: {
+				token,
+				grimoireApiUrl: configuration.grimoireApiUrl
+			}
+		});
+
+		logger.debug('onMount', 'fetching categories and tags response', { categoriesAndTags });
+
+		if (categoriesAndTags.categories && categoriesAndTags.tags) {
+			$categories = categoriesAndTags.categories;
+			$tags = categoriesAndTags.tags;
+
+			$currentTab.category = $categories.find((category) => category.initial === true)?.id;
+
+			logger.debug('onMount', 'categories and tags', { categories: $categories, tags: $tags });
+		} else {
+			onValidateGrimoireApiUrl();
+		}
+	}
 
 	onMount(async () => {
 		logger.debug('popup.onMount', 'init');
@@ -65,56 +97,17 @@
 			document.documentElement.setAttribute('data-theme', themes[theme]);
 		}
 
-		$updatedConfiguration = { ...configuration };
-
 		logger.debug('onMount', 'loaded storage data', { theme, token: !!token, configuration });
 
 		if (token && configuration.grimoireApiUrl) {
-			const categoriesAndTags = await sendToBackground<
-				{
-					token: string;
-					grimoireApiUrl: string;
-				},
-				{
-					categories: any[];
-					tags: any[];
-				}
-			>({
-				name: 'fetch-categories-tags',
-				body: {
-					token,
-					grimoireApiUrl: configuration.grimoireApiUrl
-				}
-			});
-
-			logger.debug('onMount', 'fetching categories and tags response', categoriesAndTags);
-
-			if (categoriesAndTags.categories && categoriesAndTags.tags) {
-				$categories = categoriesAndTags.categories;
-				$tags = categoriesAndTags.tags;
-
-				$currentTab.category = $categories.find((category) => category.initial === true)?.id;
-
-				logger.debug('onMount', 'categories and tags', { categories: $categories, tags: $tags });
-			} else {
-				const isGrimoireApiReachable = await validateGrimoireApiUrl(
-					$updatedConfiguration.grimoireApiUrl ?? configuration.grimoireApiUrl
-				);
-
-				$status = {
-					...$status,
-					isGrimoireApiReachable,
-					isSignedIn: false
-				};
-			}
-		} else {
-			$status = {
-				...$status,
-				isSignedIn: false
-			};
+			await fetchUserData();
 		}
 
-		logger.debug('onMount', 'Grimoire API status', $status);
+		logger.debug(
+			'onMount',
+			'Grimoire API status',
+			$status.isGrimoireApiReachable ? 'reachable' : 'not reachable'
+		);
 
 		const contentScriptResponse = await sendToContentScript<
 			any,
@@ -135,11 +128,27 @@
 
 			logger.debug('onMount', 'contentScriptResponse', contentScriptResponse);
 		}
+
+		onValidateGrimoireApiUrl();
+
+		logger.debug('onMount', 'validationInterval', 'initiating');
+		validationInterval = setInterval(() => {
+			logger.debug('onMount', 'validationInterval', 'running...');
+			onValidateGrimoireApiUrl();
+
+			if ($status.isGrimoireApiReachable) {
+				fetchUserData();
+			}
+		}, 5000);
+	});
+
+	onDestroy(() => {
+		clearInterval(validationInterval);
 	});
 
 	async function signIn() {
 		const newToken = await handleSignIn(
-			$updatedConfiguration.grimoireApiUrl ?? configuration.grimoireApiUrl,
+			configuration.grimoireApiUrl,
 			$credentials.emailOrUsername,
 			$credentials.password
 		);
@@ -147,6 +156,10 @@
 		if (newToken) {
 			token = newToken;
 			storage.set('token', newToken);
+			$status = {
+				...$status,
+				isGrimoireApiReachable: true
+			};
 
 			logger.debug('signIn', 'User signed in');
 		}
@@ -160,302 +173,320 @@
 	}
 
 	async function onConfigurationChange() {
-		// const grimoireApiUrlValidation = {
-		// 	isDifferentThanBefore: $updatedConfiguration.grimoireApiUrl !== configuration.grimoireApiUrl,
-		// 	hasValidStructure:
-		// 		$updatedConfiguration.grimoireApiUrl !== '' &&
-		// 		/^(http|https):\/\/.*\/$/.test($updatedConfiguration.grimoireApiUrl)
-		// };
-
-		storage.set('configuration', $updatedConfiguration);
-		configuration = { ...configuration, ...$updatedConfiguration };
+		storage.set('configuration', configuration);
 	}
 </script>
 
 <div class="drawer drawer-end min-h-max min-w-80 max-w-80">
-	<input id="my-drawer-4" type="checkbox" class="drawer-toggle" />
-	<div class="drawer-content">
-		<div
-			class={`container flex flex-col min-h-max min-w-80 max-w-80 ${isDev ? 'border border-dotted border-red-600' : ''}`}
-		>
-			<!-- navbar -->
-			<Navbar {storage} />
-			<!-- statuses -->
+	{#if !$status.isGrimoireApiReachable}
+		<div class="container flex flex-col min-w-80 max-w-80 min-h-96 p-8">
+			<h2 class="text-2xl font-semibold text-center mt-1 mb-4">Sign in</h2>
+			<p class="text-accent text-center mb-4">
+				First things first! Sign in to your Grimoire account to add a bookmark.
+			</p>
+			<div class="label">
+				<span class="label-text">Grimoire API URL</span>
+			</div>
+			<input
+				type="text"
+				placeholder="https://<GRIMOIRE_URL>/api"
+				class="input input-sm input-bordered w-full max-w-xs"
+				bind:value={configuration.grimoireApiUrl}
+			/>
 			{#if !$status.isGrimoireApiReachable}
-				<StatusNotConnected
-					{status}
-					grimoireApiUrl={$updatedConfiguration.grimoireApiUrl ?? configuration.grimoireApiUrl}
-				/>
-			{:else if !token || !$status.isSignedIn}
-				<div
-					class="flex items-center justify-center bg-orange-400 text-white text-lg font-semibold"
-				>
-					<span class=" text-base-100">User not signed in!</span>
-				</div>
-			{:else}
-				<!-- hero -->
-				<h2 class="text-2xl font-semibold text-center mt-1 mb-4">Add current tab</h2>
+				<p class="text-red-600 py-2">Grimoire API is not reachable!</p>
 			{/if}
-			<!-- form -->
-			<div
-				class="flex flex-col items-center justify-center space-y-4 card rounded-box py-2 px-2 w-full"
+			<!-- Sign in button -->
+			<button
+				class="btn btn-primary btn-sm w-full max-w-xs my-4"
+				on:click={onValidateGrimoireApiUrl}>Try to connect</button
 			>
-				<!-- url -->
-				<div class="flex w-full items-center justify-between space-x-4">
-					<span>URL:</span>
-					<div class="flex items-center w-full max-w-60 space-x-2">
-						<label
-							for="url_input_modal"
-							class="input input-bordered input-sm w-full max-w-60 text-left overflow-hidden whitespace-nowrap overflow-ellipsis"
-						>
-							{$currentTab.url}
-						</label>
+		</div>
+	{:else if !token}
+		<div class="container flex flex-col min-w-80 max-w-80 min-h-96 p-8">
+			<h2 class="text-2xl font-semibold text-center mt-1 mb-4">Sign in</h2>
+			<p class="text-accent text-center mb-4">
+				First things first! Sign in to your Grimoire account to add a bookmark.
+			</p>
+			<div class="label">
+				<span class="label-text">Grimoire API URL</span>
+			</div>
+			<input
+				type="text"
+				placeholder="https://<GRIMOIRE_URL>/api"
+				class="input input-sm input-bordered w-full max-w-xs"
+				bind:value={configuration.grimoireApiUrl}
+			/>
+			{#if !$status.isGrimoireApiReachable}
+				<p class="text-red-600 py-2">Grimoire API is not reachable!</p>
+			{/if}
+			<!-- Sign in button -->
+			<button class="btn btn-primary btn-sm w-full max-w-xs my-4" on:click={signIn}>Sign in</button>
+		</div>
+	{:else}
+		<input id="my-drawer-4" type="checkbox" class="drawer-toggle" />
+		<div class="drawer-content">
+			<div
+				class={`container flex flex-col min-h-max min-w-80 max-w-80 ${isDev ? 'border border-dotted border-red-600' : ''}`}
+			>
+				<!-- navbar -->
+				<Navbar {storage} />
+				<!-- form -->
+				<div
+					class="flex flex-col items-center justify-center space-y-4 card rounded-box py-2 px-2 w-full"
+				>
+					<!-- url -->
+					<div class="flex w-full items-center justify-between space-x-4">
+						<span>URL:</span>
+						<div class="flex items-center w-full max-w-60 space-x-2">
+							<label
+								for="url_input_modal"
+								class="input input-bordered input-sm w-full max-w-60 text-left overflow-hidden whitespace-nowrap overflow-ellipsis"
+							>
+								{$currentTab.url}
+							</label>
 
-						{#if $currentTab.icon_url}
-							<div class="tooltip tooltip-left" data-tip="Favicon">
-								<img src={$currentTab.icon_url} alt="icon" class="w-6 h-6" />
-							</div>
-						{:else}
-							<div class="tooltip tooltip-left" data-tip="Missing icon">
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									class="icon icon-tabler icon-tabler-camera-off"
-									width="24"
-									height="24"
-									viewBox="0 0 24 24"
-									stroke-width="2"
-									stroke="currentColor"
-									fill="none"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path
-										d="M8.297 4.289a.997 .997 0 0 1 .703 -.289h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v8m-1.187 2.828c-.249 .11 -.524 .172 -.813 .172h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2h1c.298 0 .58 -.065 .834 -.181"
-									/><path d="M10.422 10.448a3 3 0 1 0 4.15 4.098" /><path d="M3 3l18 18" /></svg
-								>
-							</div>
+							{#if $currentTab.icon_url}
+								<div class="tooltip tooltip-left" data-tip="Favicon">
+									<img src={$currentTab.icon_url} alt="icon" class="w-6 h-6" />
+								</div>
+							{:else}
+								<div class="tooltip tooltip-left" data-tip="Missing icon">
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										class="icon icon-tabler icon-tabler-camera-off"
+										width="24"
+										height="24"
+										viewBox="0 0 24 24"
+										stroke-width="2"
+										stroke="currentColor"
+										fill="none"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path
+											d="M8.297 4.289a.997 .997 0 0 1 .703 -.289h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v8m-1.187 2.828c-.249 .11 -.524 .172 -.813 .172h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2h1c.298 0 .58 -.065 .834 -.181"
+										/><path d="M10.422 10.448a3 3 0 1 0 4.15 4.098" /><path d="M3 3l18 18" /></svg
+									>
+								</div>
+							{/if}
+						</div>
+					</div>
+					<!-- title -->
+					<div class="flex w-full items-center justify-between space-x-4">
+						<span>Title:</span>
+						<input
+							type="text"
+							class="input input-bordered input-sm w-full max-w-60"
+							bind:value={$currentTab.title}
+						/>
+					</div>
+					<!-- category -->
+					<div class="flex w-full items-center justify-between space-x-4">
+						<span>Category:</span>
+						{#if $categories}
+							<select
+								class="select select-bordered select-sm w-full max-w-60"
+								bind:value={$currentTab.category}
+							>
+								{#each $categories as category (category.id)}
+									<option
+										value={category.id}
+										style="background-color: {category.color}"
+										selected={category.initial === true}>{category.name}</option
+									>
+								{/each}
+							</select>
 						{/if}
 					</div>
-				</div>
-				<!-- title -->
-				<div class="flex w-full items-center justify-between space-x-4">
-					<span>Title:</span>
-					<input
-						type="text"
-						class="input input-bordered input-sm w-full max-w-60"
-						bind:value={$currentTab.title}
-					/>
-				</div>
-				<!-- category -->
-				<div class="flex w-full items-center justify-between space-x-4">
-					<span>Category:</span>
-					{#if $categories}
-						<select
-							class="select select-bordered select-sm w-full max-w-60"
-							bind:value={$currentTab.category}
-						>
-							{#each $categories as category (category.id)}
-								<option
-									value={category.id}
-									style="background-color: {category.color}"
-									selected={category.initial === true}>{category.name}</option
-								>
-							{/each}
-						</select>
-					{/if}
-				</div>
-				<!-- tags -->
-				<div class="flex w-full items-center justify-between space-x-4">
-					<span>Tags:</span>
-					<!-- <input
+					<!-- tags -->
+					<div class="flex w-full items-center justify-between space-x-4">
+						<span>Tags:</span>
+						<!-- <input
 						type="text"
 						class="input input-bordered input-sm w-full max-w-60"
 						placeholder="Comma separated tags..."
 					/> -->
-					<TagsInput fetchedTags={$tags.map((tag) => tag.name)} selectedTags={currentTab} />
-				</div>
-				<!-- note -->
-				<div class="flex w-full items-center justify-between space-x-4">
-					<span>Note:</span>
-					<textarea
-						class="textarea textarea-bordered textarea-sm w-full max-w-60"
-						placeholder="Add a note to self..."
-						bind:value={$currentTab.note}
-					></textarea>
-				</div>
-
-				<!-- attributes -->
-				<div class="flex w-full items-center justify-end space-x-8">
-					<!-- importance 0-3 -->
-					<div class="flex flex-col w-fit">
-						<label for="importance" class="label">Importance</label>
-						<div class="rating rating-md">
-							<input type="radio" name="importance" class="rating-hidden" value="" checked />
-							<input
-								type="radio"
-								name="importance"
-								class="mask mask-star-2 bg-orange-400"
-								value="1"
-							/>
-							<input
-								type="radio"
-								name="importance"
-								class="mask mask-star-2 bg-orange-400"
-								value="2"
-							/>
-							<input
-								type="radio"
-								name="importance"
-								class="mask mask-star-2 bg-orange-400"
-								value="3"
-							/>
-						</div>
+						<TagsInput fetchedTags={$tags.map((tag) => tag.name)} selectedTags={currentTab} />
 					</div>
-					<!-- flag it -->
-					<label class="cursor-pointer">
-						<label for="flag" class="label">Flagged</label>
-						<input
-							type="checkbox"
-							class="toggle toggle-primary"
-							bind:checked={$currentTab.flagged}
-						/>
-						<span class="toggle-mark"></span>
-					</label>
-				</div>
-				<!-- submit -->
-				<div class="flex w-full items-center justify-between space-x-4">
-					<button
-						class="btn btn-primary btn-md w-full text-lg"
-						on:click={() =>
-							onAddBookmark(
-								$currentTab,
-								token,
-								$updatedConfiguration.grimoireApiUrl ?? configuration.grimoireApiUrl
-							)}>Add Bookmark</button
-					>
-				</div>
+					<!-- note -->
+					<div class="flex w-full items-center justify-between space-x-4">
+						<span>Note:</span>
+						<textarea
+							class="textarea textarea-bordered textarea-sm w-full max-w-60"
+							placeholder="Add a note to self..."
+							bind:value={$currentTab.note}
+						></textarea>
+					</div>
 
-				<!-- 'Show more details' collapsed  -->
-				<div class="collapse collapse-arrow bg-base-200">
-					<input type="checkbox" />
-					<div class="collapse-title text-lg font-medium">Show more details</div>
-					<div class="collapse-content space-y-1">
-						<!-- icon url -->
-						<div class="flex w-full items-center justify-between space-x-4">
-							<span>Icon:</span>
-							<div class="flex space-x-1 items-center">
-								{#if $currentTab.icon_url}
-									<div class="tooltip" data-tip="Favicon preview">
-										<img src={$currentTab.icon_url} alt="icon" class="w-6 h-6" />
-									</div>
-								{/if}
+					<!-- attributes -->
+					<div class="flex w-full items-center justify-end space-x-8">
+						<!-- importance 0-3 -->
+						<div class="flex flex-col w-fit">
+							<label for="importance" class="label">Importance</label>
+							<div class="rating rating-md">
+								<input type="radio" name="importance" class="rating-hidden" value="" checked />
 								<input
-									type="text"
-									bind:value={$currentTab.icon_url}
-									placeholder="Icon URL..."
-									class="input input-bordered input-sm w-full max-w-44"
+									type="radio"
+									name="importance"
+									class="mask mask-star-2 bg-orange-400"
+									value="1"
+								/>
+								<input
+									type="radio"
+									name="importance"
+									class="mask mask-star-2 bg-orange-400"
+									value="2"
+								/>
+								<input
+									type="radio"
+									name="importance"
+									class="mask mask-star-2 bg-orange-400"
+									value="3"
 								/>
 							</div>
 						</div>
-						<!-- main-image -->
-						<div class="flex w-full items-center justify-between space-x-4">
-							<span class="min-w-fit">Main Image:</span>
+						<!-- flag it -->
+						<label class="cursor-pointer">
+							<label for="flag" class="label">Flagged</label>
 							<input
-								type="text"
-								class="input input-bordered input-sm w-full max-w-44"
-								placeholder="Main image URL..."
-								bind:value={$currentTab.mainImage}
+								type="checkbox"
+								class="toggle toggle-primary"
+								bind:checked={$currentTab.flagged}
 							/>
-						</div>
-						<!-- description -->
-						<div class="flex w-full items-center justify-between space-x-4">
-							<span>Description:</span>
-							<textarea
-								class="textarea textarea-bordered textarea-sm w-full max-w-44"
-								placeholder="Website's description (if available)"
-								bind:value={$currentTab.description}
-							/>
-						</div>
-						<!-- debug -->
-						<div class="flex w-full items-center justify-between space-x-4">
-							<span>HTML:</span>
-							<label
-								for="html_content_modal"
-								class="btn btn-secondary btn-sm cursor-pointer w-full max-w-44"
-							>
-								Preview
-							</label>
+							<span class="toggle-mark"></span>
+						</label>
+					</div>
+					<!-- submit -->
+					<div class="flex w-full items-center justify-between space-x-4">
+						<button
+							class="btn btn-primary btn-md w-full text-lg"
+							on:click={() => onAddBookmark($currentTab, token, configuration.grimoireApiUrl)}
+							>Add Bookmark</button
+						>
+					</div>
+
+					<!-- 'Show more details' collapsed  -->
+					<div class="collapse collapse-arrow bg-base-200">
+						<input type="checkbox" />
+						<div class="collapse-title text-lg font-medium">Show more details</div>
+						<div class="collapse-content space-y-1">
+							<!-- icon url -->
+							<div class="flex w-full items-center justify-between space-x-4">
+								<span>Icon:</span>
+								<div class="flex space-x-1 items-center">
+									{#if $currentTab.icon_url}
+										<div class="tooltip" data-tip="Favicon preview">
+											<img src={$currentTab.icon_url} alt="icon" class="w-6 h-6" />
+										</div>
+									{/if}
+									<input
+										type="text"
+										bind:value={$currentTab.icon_url}
+										placeholder="Icon URL..."
+										class="input input-bordered input-sm w-full max-w-44"
+									/>
+								</div>
+							</div>
+							<!-- main-image -->
+							<div class="flex w-full items-center justify-between space-x-4">
+								<span class="min-w-fit">Main Image:</span>
+								<input
+									type="text"
+									class="input input-bordered input-sm w-full max-w-44"
+									placeholder="Main image URL..."
+									bind:value={$currentTab.mainImage}
+								/>
+							</div>
+							<!-- description -->
+							<div class="flex w-full items-center justify-between space-x-4">
+								<span>Description:</span>
+								<textarea
+									class="textarea textarea-bordered textarea-sm w-full max-w-44"
+									placeholder="Website's description (if available)"
+									bind:value={$currentTab.description}
+								/>
+							</div>
+							<!-- debug -->
+							<div class="flex w-full items-center justify-between space-x-4">
+								<span>HTML:</span>
+								<label
+									for="html_content_modal"
+									class="btn btn-secondary btn-sm cursor-pointer w-full max-w-44"
+								>
+									Preview
+								</label>
+							</div>
 						</div>
 					</div>
 				</div>
 			</div>
 		</div>
-	</div>
-	<div class="drawer-side">
-		<label for="my-drawer-4" aria-label="close sidebar" class="drawer-overlay"></label>
-		<ul class="menu p-4 w-72 min-h-full bg-base-100 text-base-content">
-			<!-- Sidebar content here -->
-			<div class="w-full h-full flex flex-col space-y-4">
-				<div class="collapse collapse-arrow bg-base-200">
-					<input type="radio" name="my-accordion-2" checked={true} />
-					<div class="collapse-title text-xl font-medium">Connection Details</div>
-					<div class="collapse-content">
-						<label class="form-control w-full max-w-xs">
-							<div class="label">
-								<span class="label-text">Grimoire API URL</span>
-							</div>
-							<input
-								type="text"
-								placeholder="https://<GRIMOIRE_URL>/api"
-								class="input input-sm input-bordered w-full max-w-xs"
-								bind:value={$updatedConfiguration.grimoireApiUrl}
-							/>
-							{#if !$status.isGrimoireApiReachable}
-								<p class="text-red-600 py-2">Grimoire API is not reachable!</p>
-							{/if}
-
-							{#if !token}
-								<label class="form-control w-full max-w-xs">
-									<div class="label">
-										<span class="label-text">Username / e-mail</span>
-									</div>
-									<input
-										type="text"
-										placeholder="Type here"
-										class="input input-sm input-bordered w-full max-w-xs"
-										bind:value={$credentials.emailOrUsername}
-									/>
-								</label><label class="form-control w-full max-w-xs">
-									<div class="label">
-										<span class="label-text">Password</span>
-									</div>
-									<input
-										type="password"
-										placeholder="Type here"
-										class="input input-sm input-bordered w-full max-w-xs"
-										bind:value={$credentials.password}
-									/>
-								</label>
-								<!-- Sign in button -->
-								<button class="btn btn-primary btn-sm w-full max-w-xs my-4" on:click={signIn}
-									>Sign in</button
-								>
-							{:else}
-								<button class="btn btn-secondary btn-sm w-full max-w-xs my-4" on:click={signOut}
-									>Sign out</button
-								>
-								<!-- Token: {token} -->
-							{/if}
-						</label>
-					</div>
-
+		<div class="drawer-side">
+			<label for="my-drawer-4" aria-label="close sidebar" class="drawer-overlay"></label>
+			<ul class="menu p-4 w-72 min-h-full bg-base-100 text-base-content">
+				<!-- Sidebar content here -->
+				<div class="w-full h-full flex flex-col space-y-4">
 					<div class="collapse collapse-arrow bg-base-200">
-						<input type="radio" name="my-accordion-2" />
-						<div class="collapse-title text-xl font-medium">Other options</div>
+						<input type="radio" name="my-accordion-2" checked={true} />
+						<div class="collapse-title text-xl font-medium">Connection Details</div>
 						<div class="collapse-content">
-							<p>hello</p>
+							<label class="form-control w-full max-w-xs">
+								<div class="label">
+									<span class="label-text">Grimoire API URL</span>
+								</div>
+								<input
+									type="text"
+									placeholder="https://<GRIMOIRE_URL>/api"
+									class="input input-sm input-bordered w-full max-w-xs"
+									bind:value={configuration.grimoireApiUrl}
+								/>
+								{#if !$status.isGrimoireApiReachable}
+									<p class="text-red-600 py-2">Grimoire API is not reachable!</p>
+								{/if}
+
+								{#if !token}
+									<label class="form-control w-full max-w-xs">
+										<div class="label">
+											<span class="label-text">Username / e-mail</span>
+										</div>
+										<input
+											type="text"
+											placeholder="Type here"
+											class="input input-sm input-bordered w-full max-w-xs"
+											bind:value={$credentials.emailOrUsername}
+										/>
+									</label><label class="form-control w-full max-w-xs">
+										<div class="label">
+											<span class="label-text">Password</span>
+										</div>
+										<input
+											type="password"
+											placeholder="Type here"
+											class="input input-sm input-bordered w-full max-w-xs"
+											bind:value={$credentials.password}
+										/>
+									</label>
+									<!-- Sign in button -->
+									<button class="btn btn-primary btn-sm w-full max-w-xs my-4" on:click={signIn}
+										>Sign in</button
+									>
+								{:else}
+									<button class="btn btn-secondary btn-sm w-full max-w-xs my-4" on:click={signOut}
+										>Sign out</button
+									>
+									<!-- Token: {token} -->
+								{/if}
+							</label>
 						</div>
-					</div>
-					<!-- <div class="collapse collapse-arrow bg-base-200">
+
+						<div class="collapse collapse-arrow bg-base-200">
+							<input type="radio" name="my-accordion-2" />
+							<div class="collapse-title text-xl font-medium">Other options</div>
+							<div class="collapse-content">
+								<p>hello</p>
+							</div>
+						</div>
+						<!-- <div class="collapse collapse-arrow bg-base-200">
 					<input type="radio" name="my-accordion-2" /> 
 					<div class="collapse-title text-xl font-medium">
 					  Click to open this one and close others
@@ -464,13 +495,15 @@
 					  <p>hello</p>
 					</div>
 				  </div> -->
+					</div>
+					<button
+						class="btn btn-primary btn-sm w-20 mt-auto ml-auto"
+						on:click={onConfigurationChange}>Save</button
+					>
 				</div>
-				<button class="btn btn-primary btn-sm w-20 mt-auto ml-auto" on:click={onConfigurationChange}
-					>Save</button
-				>
-			</div>
-		</ul>
-	</div>
+			</ul>
+		</div>
+	{/if}
 </div>
 
 <!-- URL modal -->

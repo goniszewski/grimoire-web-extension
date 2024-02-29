@@ -20,10 +20,6 @@ export const credentials = writable({
 	emailOrUsername: null,
 	password: null
 });
-export const updatedConfiguration = writable({
-	grimoireApiUrl: ''
-});
 export const status = writable({
-	isSignedIn: true,
 	isGrimoireApiReachable: true
 });
