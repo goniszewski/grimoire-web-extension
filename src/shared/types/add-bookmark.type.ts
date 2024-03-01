@@ -14,4 +14,5 @@ export type AddBookmarkRequestBody = {
 	flagged?: boolean;
 	category: string;
 	tags?: string[];
+	screenshot?: string;
 };

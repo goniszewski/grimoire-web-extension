@@ -45,13 +45,21 @@
 	$: $updatedUrl = $currentTab.url;
 	// $: logger.debug('popup', 'currentTab (update)', $currentTab);
 
-	async function onValidateGrimoireApiUrl() {
+	async function onValidateGrimoireApiUrl(refetchUserData = false) {
+		if (!configuration.grimoireApiUrl) {
+			$status.isGrimoireApiReachable = false;
+		}
+
 		const isGrimoireApiReachable = await validateGrimoireApiUrl(configuration.grimoireApiUrl);
 
 		$status = {
 			...$status,
 			isGrimoireApiReachable
 		};
+
+		if (isGrimoireApiReachable && refetchUserData) {
+			fetchUserData();
+		}
 	}
 
 	async function fetchUserData() {
@@ -74,16 +82,19 @@
 
 		logger.debug('onMount', 'fetching categories and tags response', { categoriesAndTags });
 
-		if (categoriesAndTags.categories && categoriesAndTags.tags) {
-			$categories = categoriesAndTags.categories;
-			$tags = categoriesAndTags.tags;
+		if (!categoriesAndTags.categories || !categoriesAndTags.tags) {
+			logger.error('onMount', 'fetching categories and tags', 'No categories or tags found');
 
-			$currentTab.category = $categories.find((category) => category.initial === true)?.id;
-
-			logger.debug('onMount', 'categories and tags', { categories: $categories, tags: $tags });
-		} else {
-			onValidateGrimoireApiUrl();
+			return;
 		}
+		$categories = categoriesAndTags.categories;
+		$tags = categoriesAndTags.tags;
+
+		$currentTab.category = $categories.find((category) => category.initial === true)?.id;
+
+		logger.debug('onMount', 'categories and tags', { categories: $categories, tags: $tags });
+
+		return true;
 	}
 
 	onMount(async () => {
@@ -99,8 +110,14 @@
 
 		logger.debug('onMount', 'loaded storage data', { theme, token: !!token, configuration });
 
-		if (token && configuration.grimoireApiUrl) {
-			await fetchUserData();
+		await onValidateGrimoireApiUrl();
+
+		if (token && $status.isGrimoireApiReachable) {
+			const userSignedIn = await fetchUserData();
+
+			if (!userSignedIn) {
+				signOut();
+			}
 		}
 
 		logger.debug(
@@ -109,36 +126,33 @@
 			$status.isGrimoireApiReachable ? 'reachable' : 'not reachable'
 		);
 
-		const contentScriptResponse = await sendToContentScript<
-			any,
-			{
-				html: string;
-				description: string;
+		try {
+			const contentScriptResponse = await sendToContentScript<
+				any,
+				{
+					html: string;
+					description: string;
+				}
+			>({
+				name: 'get-webpage-content'
+			});
+
+			if (contentScriptResponse) {
+				$currentTab = {
+					...$currentTab,
+					contentHtml: contentScriptResponse.html,
+					description: contentScriptResponse.description
+				};
+
+				logger.debug('onMount', 'contentScriptResponse', contentScriptResponse);
 			}
-		>({
-			name: 'get-webpage-content'
-		});
-
-		if (contentScriptResponse) {
-			$currentTab = {
-				...$currentTab,
-				contentHtml: contentScriptResponse.html,
-				description: contentScriptResponse.description
-			};
-
-			logger.debug('onMount', 'contentScriptResponse', contentScriptResponse);
+		} catch (error) {
+			logger.error('onMount', 'contentScriptResponse', 'Could not get content from content script');
 		}
-
-		onValidateGrimoireApiUrl();
 
 		logger.debug('onMount', 'validationInterval', 'initiating');
 		validationInterval = setInterval(() => {
-			logger.debug('onMount', 'validationInterval', 'running...');
-			onValidateGrimoireApiUrl();
-
-			if ($status.isGrimoireApiReachable) {
-				fetchUserData();
-			}
+			onValidateGrimoireApiUrl(true);
 		}, 5000);
 	});
 
@@ -182,7 +196,11 @@
 		<div class="container flex flex-col min-w-80 max-w-80 min-h-96 p-8">
 			<h2 class="text-2xl font-semibold text-center mt-1 mb-4">Sign in</h2>
 			<p class="text-accent text-center mb-4">
-				First things first! Sign in to your Grimoire account to add a bookmark.
+				{#if token}
+					Oh snap! Grimoire API went dark. Please check the URL and try again.
+				{:else}
+					First things first! Let's connect to your Grimoire instance!
+				{/if}
 			</p>
 			<div class="label">
 				<span class="label-text">Grimoire API URL</span>
@@ -192,35 +210,55 @@
 				placeholder="https://<GRIMOIRE_URL>/api"
 				class="input input-sm input-bordered w-full max-w-xs"
 				bind:value={configuration.grimoireApiUrl}
+				on:keyup={(e) => {
+					if (e.key === 'Enter') {
+						onValidateGrimoireApiUrl();
+					}
+				}}
 			/>
 			{#if !$status.isGrimoireApiReachable}
 				<p class="text-red-600 py-2">Grimoire API is not reachable!</p>
 			{/if}
-			<!-- Sign in button -->
 			<button
 				class="btn btn-primary btn-sm w-full max-w-xs my-4"
-				on:click={onValidateGrimoireApiUrl}>Try to connect</button
+				on:click={() => onValidateGrimoireApiUrl()}>Try to connect</button
 			>
 		</div>
 	{:else if !token}
 		<div class="container flex flex-col min-w-80 max-w-80 min-h-96 p-8">
 			<h2 class="text-2xl font-semibold text-center mt-1 mb-4">Sign in</h2>
-			<p class="text-accent text-center mb-4">
-				First things first! Sign in to your Grimoire account to add a bookmark.
-			</p>
-			<div class="label">
-				<span class="label-text">Grimoire API URL</span>
-			</div>
-			<input
-				type="text"
-				placeholder="https://<GRIMOIRE_URL>/api"
-				class="input input-sm input-bordered w-full max-w-xs"
-				bind:value={configuration.grimoireApiUrl}
-			/>
-			{#if !$status.isGrimoireApiReachable}
-				<p class="text-red-600 py-2">Grimoire API is not reachable!</p>
-			{/if}
-			<!-- Sign in button -->
+			<p class="text-accent text-center mb-4">Signed out! Please sign in to continue.</p>
+			<label class="form-control w-full max-w-xs">
+				<div class="label">
+					<span class="label-text">Username / e-mail</span>
+				</div>
+				<input
+					type="text"
+					placeholder="Type here"
+					class="input input-sm input-bordered w-full max-w-xs"
+					bind:value={$credentials.emailOrUsername}
+					on:keyup={(e) => {
+						if (e.key === 'Enter') {
+							signIn();
+						}
+					}}
+				/>
+			</label><label class="form-control w-full max-w-xs">
+				<div class="label">
+					<span class="label-text">Password</span>
+				</div>
+				<input
+					type="password"
+					placeholder="Type here"
+					class="input input-sm input-bordered w-full max-w-xs"
+					bind:value={$credentials.password}
+					on:keyup={(e) => {
+						if (e.key === 'Enter') {
+							signIn();
+						}
+					}}
+				/>
+			</label>
 			<button class="btn btn-primary btn-sm w-full max-w-xs my-4" on:click={signIn}>Sign in</button>
 		</div>
 	{:else}
@@ -360,7 +398,7 @@
 					<div class="flex w-full items-center justify-between space-x-4">
 						<button
 							class="btn btn-primary btn-md w-full text-lg"
-							on:click={() => onAddBookmark($currentTab, token, configuration.grimoireApiUrl)}
+							on:click={() => onAddBookmark($currentTab, token, configuration.grimoireApiUrl, true)}
 							>Add Bookmark</button
 						>
 					</div>
@@ -437,7 +475,9 @@
 								<input
 									type="text"
 									placeholder="https://<GRIMOIRE_URL>/api"
-									class="input input-sm input-bordered w-full max-w-xs"
+									class={`input input-sm input-bordered w-full max-w-xs ${
+										!$status.isGrimoireApiReachable ? 'input-error' : 'input-success'
+									}`}
 									bind:value={configuration.grimoireApiUrl}
 								/>
 								{#if !$status.isGrimoireApiReachable}
