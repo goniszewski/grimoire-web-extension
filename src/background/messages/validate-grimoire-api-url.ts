@@ -12,30 +12,41 @@ const handler: PlasmoMessaging.MessageHandler<{
 		grimoireApiUrl
 	});
 
-	const response = await fetch(`${grimoireApiUrl}/health`, {
-		method: 'GET',
-		headers: {
-			'Content-Type': 'application/json'
-		}
-	}); // todo: it always returns empty object
+	try {
+		const response = await fetch(`${grimoireApiUrl}/health`, {
+			method: 'GET',
+			headers: {
+				'Content-Type': 'application/json'
+			}
+		}); // todo: it always returns empty object
 
-	response.ok
-		? logger.debug(
-				'background.messages.validate-grimoire-api-url',
-				'Connection to Grimoire API established'
-			)
-		: logger.error(
-				'background.messages.validate-grimoire-api-url',
-				'Error validating Grimoire API URL',
-				{
-					status: response.status,
-					statusText: response.statusText
-				}
-			);
+		response.ok
+			? logger.debug(
+					'background.messages.validate-grimoire-api-url',
+					'Connection to Grimoire API established'
+				)
+			: logger.error(
+					'background.messages.validate-grimoire-api-url',
+					'Error validating Grimoire API URL',
+					{
+						status: response.status,
+						statusText: response.statusText
+					}
+				);
 
-	res.send({
-		valid: response.ok
-	});
+		res.send({
+			valid: response.ok
+		});
+	} catch (error) {
+		logger.error(
+			'background.messages.validate-grimoire-api-url',
+			'Error validating Grimoire API URL',
+			error?.message
+		);
+		res.send({
+			valid: false
+		});
+	}
 };
 
 export default handler;
