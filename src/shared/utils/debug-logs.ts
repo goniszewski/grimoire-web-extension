@@ -1,6 +1,3 @@
-// convert to fetch call
-// curl -u cm9iZXJ0Z29uaXN6ZXdza2lAb3V0bG9vay5jb206OGgyWHBhY2U3aFNhM1lXWg== -k http://192.168.50.221:5080/api/default/default/_json -d '[{"level":"info","job":"test","log":"test message for openobserve"}]'
-
 const sendRequestToLogger = (level: string, job: string, message: any) =>
 	fetch(process.env.PLASMO_PUBLIC_LOGGER_URL, {
 		method: 'POST',
