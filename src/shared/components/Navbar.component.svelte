@@ -1,7 +1,14 @@
 <script lang="ts">
+	import type { Storage } from '@plasmohq/storage';
 	import { handleThemeChange } from '~shared/handlers/handle-theme-change.handler';
 
-	export let storage: any;
+	export let storage: Storage;
+
+	let isDark: boolean;
+
+	storage.get('theme').then((theme) => {
+		isDark = theme === 'dark';
+	});
 </script>
 
 <div class="flex items-center bg-base-100 px-2">
@@ -14,6 +21,7 @@
 			<input
 				type="checkbox"
 				class="theme-controller"
+				checked={isDark}
 				on:change={(e) => handleThemeChange(storage, e.target.checked ? 'dark' : 'light')}
 			/>
 			<svg
