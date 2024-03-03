@@ -23,3 +23,17 @@ export const credentials = writable({
 export const status = writable({
 	isGrimoireApiReachable: true
 });
+export const loading = writable({
+	isFetchingCategoriesAndTags: false,
+	isSigningIn: false,
+	isAddingBookmark: false,
+	justAddedBookmark: false
+});
+
+loading.subscribe((value) => {
+	if (value.justAddedBookmark) {
+		setTimeout(() => {
+			loading.update((value) => ({ ...value, isAddingBookmark: false, justAddedBookmark: false }));
+		}, 1650);
+	}
+});

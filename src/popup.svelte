@@ -10,8 +10,17 @@
 	import { clearUrl } from '~shared/utils/clear-url.util';
 	import { handleSignIn } from '~shared/handlers/handle-sign-in.handler';
 	import Navbar from '~shared/components/Navbar.component.svelte';
-	import { categories, currentTab, tags, updatedUrl, credentials, status } from '~shared/stores';
+	import {
+		categories,
+		currentTab,
+		tags,
+		updatedUrl,
+		credentials,
+		status,
+		loading
+	} from '~shared/stores';
 	import TagsInput from '~shared/components/TagsInput.component.svelte';
+	import { ToastNode, showToast } from '~shared/utils/show-toast';
 
 	const isDev = process.env.NODE_ENV === 'development';
 
@@ -37,29 +46,45 @@
 	let token: string = '';
 	let configuration: {
 		grimoireApiUrl: string;
+		saveScreenshot: boolean;
 	} = {
-		grimoireApiUrl: ''
+		grimoireApiUrl: '',
+		saveScreenshot: false
 	};
 	let validationInterval: NodeJS.Timeout;
 
 	$: $updatedUrl = $currentTab.url;
 	// $: logger.debug('popup', 'currentTab (update)', $currentTab);
 
-	async function onValidateGrimoireApiUrl(refetchUserData = false) {
+	async function onValidateGrimoireApiUrl() {
 		if (!configuration.grimoireApiUrl) {
 			$status.isGrimoireApiReachable = false;
+
+			showToast.error('Grimoire API URL is empty!');
 		}
 
-		const isGrimoireApiReachable = await validateGrimoireApiUrl(configuration.grimoireApiUrl);
+		const isGrimoireApiReachable = await validateGrimoireApiUrl(configuration.grimoireApiUrl).catch(
+			(error) => {
+				logger.error('onValidateGrimoireApiUrl', 'Error validating Grimoire API URL', error);
+				showToast(`Grimoire API is ${isGrimoireApiReachable}!`);
+
+				return false;
+			}
+		);
+
+		if ($status.isGrimoireApiReachable && !isGrimoireApiReachable) {
+			showToast.error('Grimoire API is not reachable!');
+		} else if (!$status.isGrimoireApiReachable && isGrimoireApiReachable && $categories.length) {
+			showToast.success('Reconnected to Grimoire API!');
+		} else if (!$status.isGrimoireApiReachable && isGrimoireApiReachable && !$categories.length) {
+			showToast.success('Connected to Grimoire API!');
+			fetchUserData();
+		}
 
 		$status = {
 			...$status,
 			isGrimoireApiReachable
 		};
-
-		if (isGrimoireApiReachable && refetchUserData) {
-			fetchUserData();
-		}
 	}
 
 	async function fetchUserData() {
@@ -151,8 +176,9 @@
 		}
 
 		logger.debug('onMount', 'validationInterval', 'initiating');
+
 		validationInterval = setInterval(() => {
-			onValidateGrimoireApiUrl(true);
+			onValidateGrimoireApiUrl();
 		}, 5000);
 	});
 
@@ -161,6 +187,8 @@
 	});
 
 	async function signIn() {
+		$loading.isSigningIn = true;
+
 		const newToken = await handleSignIn(
 			configuration.grimoireApiUrl,
 			$credentials.emailOrUsername,
@@ -176,7 +204,10 @@
 			};
 
 			logger.debug('signIn', 'User signed in');
+
+			await fetchUserData();
 		}
+		$loading.isSigningIn = false;
 	}
 
 	function signOut() {
@@ -188,6 +219,9 @@
 
 	async function onConfigurationChange() {
 		storage.set('configuration', configuration);
+
+		logger.debug('onConfigurationChange', 'Configuration changed', configuration);
+		showToast.success('Configuration saved! 🪶');
 	}
 </script>
 
@@ -259,7 +293,18 @@
 					}}
 				/>
 			</label>
-			<button class="btn btn-primary btn-sm w-full max-w-xs my-4" on:click={signIn}>Sign in</button>
+			<button
+				class="btn btn-primary btn-sm w-full max-w-xs my-4"
+				on:click={signIn}
+				disabled={$loading.isSigningIn}
+			>
+				{#if $loading.isSigningIn}
+					<span class="loading loading-spinner" />
+					Signing in...
+				{:else}
+					Sign in
+				{/if}
+			</button>
 		</div>
 	{:else}
 		<input id="my-drawer-4" type="checkbox" class="drawer-toggle" />
@@ -339,11 +384,6 @@
 					<!-- tags -->
 					<div class="flex w-full items-center justify-between space-x-4">
 						<span>Tags:</span>
-						<!-- <input
-						type="text"
-						class="input input-bordered input-sm w-full max-w-60"
-						placeholder="Comma separated tags..."
-					/> -->
 						<TagsInput fetchedTags={$tags.map((tag) => tag.name)} selectedTags={currentTab} />
 					</div>
 					<!-- note -->
@@ -357,29 +397,39 @@
 					</div>
 
 					<!-- attributes -->
-					<div class="flex w-full items-center justify-end space-x-8">
+					<div class="flex w-full max-w-60 items-center justify-between ml-auto pr-12">
 						<!-- importance 0-3 -->
 						<div class="flex flex-col w-fit">
 							<label for="importance" class="label">Importance</label>
 							<div class="rating rating-md">
-								<input type="radio" name="importance" class="rating-hidden" value="" checked />
+								<input
+									type="radio"
+									name="importance"
+									class="rating-hidden"
+									value=""
+									checked
+									on:change={() => ($currentTab.importance = 0)}
+								/>
 								<input
 									type="radio"
 									name="importance"
 									class="mask mask-star-2 bg-orange-400"
 									value="1"
+									on:change={() => ($currentTab.importance = 1)}
 								/>
 								<input
 									type="radio"
 									name="importance"
 									class="mask mask-star-2 bg-orange-400"
 									value="2"
+									on:change={() => ($currentTab.importance = 2)}
 								/>
 								<input
 									type="radio"
 									name="importance"
 									class="mask mask-star-2 bg-orange-400"
 									value="3"
+									on:change={() => ($currentTab.importance = 3)}
 								/>
 							</div>
 						</div>
@@ -397,10 +447,25 @@
 					<!-- submit -->
 					<div class="flex w-full items-center justify-between space-x-4">
 						<button
-							class="btn btn-primary btn-md w-full text-lg"
-							on:click={() => onAddBookmark($currentTab, token, configuration.grimoireApiUrl, true)}
-							>Add Bookmark</button
+							class={`btn btn-primary btn-md w-full text-lg ${$loading.justAddedBookmark ? 'btn-success animate-pulse' : ''}`}
+							on:click={() =>
+								onAddBookmark(
+									$currentTab,
+									token,
+									configuration.grimoireApiUrl,
+									configuration.saveScreenshot
+								)}
+							disabled={$loading.isAddingBookmark && !$loading.justAddedBookmark}
 						>
+							{#if $loading.justAddedBookmark}
+								Bookmark added!
+							{:else if $loading.isAddingBookmark}
+								<span class="loading loading-spinner" />
+								Sending...
+							{:else}
+								Add Bookmark
+							{/if}
+						</button>
 					</div>
 
 					<!-- 'Show more details' collapsed  -->
@@ -523,7 +588,14 @@
 							<input type="radio" name="my-accordion-2" />
 							<div class="collapse-title text-xl font-medium">Other options</div>
 							<div class="collapse-content">
-								<p>hello</p>
+								<label class="label cursor-pointer">
+									<span class="label-text">Send webpage screenshot</span>
+									<input
+										type="checkbox"
+										class="toggle"
+										bind:checked={configuration.saveScreenshot}
+									/>
+								</label>
 							</div>
 						</div>
 						<!-- <div class="collapse collapse-arrow bg-base-200">
@@ -586,6 +658,11 @@
 		</div>
 	</div>
 </div>
+<ToastNode
+	toastOptions={{
+		position: 'top-center'
+	}}
+/>
 
 <style>
 	:global(div.multiselect) {
