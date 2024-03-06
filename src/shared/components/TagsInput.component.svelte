@@ -10,4 +10,5 @@
 	allowUserOptions={true}
 	duplicates={false}
 	bind:selected={$selectedTags.tags}
+	placeholder="Select tags or add new ones"
 />

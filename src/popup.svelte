@@ -2,28 +2,27 @@
 	import { sendToBackground, sendToContentScript } from '@plasmohq/messaging';
 	import { Storage } from '@plasmohq/storage';
 	import { onDestroy, onMount } from 'svelte';
-	import { logger } from '~shared/utils/debug-logs';
-	import { themes } from '~shared/enums';
-	import './style.css';
-	import { validateGrimoireApiUrl } from '~shared/helpers/validate-grimoire-api-url';
-	import { onAddBookmark } from '~shared/handlers/on-add-bookmark.handler';
-	import { clearUrl } from '~shared/utils/clear-url.util';
-	import { handleSignIn } from '~shared/handlers/handle-sign-in.handler';
 	import Navbar from '~shared/components/Navbar.component.svelte';
+	import TagsInput from '~shared/components/TagsInput.component.svelte';
+	import { themes } from '~shared/enums';
+	import { handleSignIn } from '~shared/handlers/handle-sign-in.handler';
+	import { onAddBookmark } from '~shared/handlers/on-add-bookmark.handler';
+	import { validateGrimoireApiUrl } from '~shared/helpers/validate-grimoire-api-url';
 	import {
 		categories,
-		currentTab,
-		tags,
-		updatedUrl,
 		credentials,
+		currentTab,
+		loading,
 		status,
-		loading
+		tags,
+		updatedUrl
 	} from '~shared/stores';
-	import TagsInput from '~shared/components/TagsInput.component.svelte';
+	import { clearUrl } from '~shared/utils/clear-url.util';
+	import { logger } from '~shared/utils/debug-logs';
 	import { ToastNode, showToast } from '~shared/utils/show-toast';
+	import './style.css';
 
 	const isDev = process.env.NODE_ENV === 'development';
-
 	const storage = new Storage();
 
 	chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
@@ -54,7 +53,6 @@
 	let validationInterval: NodeJS.Timeout;
 
 	$: $updatedUrl = $currentTab.url;
-	// $: logger.debug('popup', 'currentTab (update)', $currentTab);
 
 	async function onValidateGrimoireApiUrl() {
 		if (!configuration.grimoireApiUrl) {
@@ -306,6 +304,13 @@
 				{/if}
 			</button>
 		</div>
+	{:else if !$categories.length}
+		<div class="container flex flex-col justify-center items-center min-w-80 max-w-80 min-h-96 p-8">
+			<span class="text-md font-semibold text-center mt-1 mb-4">
+				Fetching categories and tags...
+			</span>
+			<span class="loading loading-infinity loading-lg"></span>
+		</div>
 	{:else}
 		<input id="my-drawer-4" type="checkbox" class="drawer-toggle" />
 		<div class="drawer-content">
@@ -316,7 +321,7 @@
 				<Navbar {storage} />
 				<!-- form -->
 				<div
-					class="flex flex-col items-center justify-center space-y-4 card rounded-box py-2 px-2 w-full"
+					class="flex flex-col items-center justify-center space-y-3 card rounded-box py-2 px-2 w-full"
 				>
 					<!-- url -->
 					<div class="flex w-full items-center justify-between space-x-4">
@@ -331,7 +336,7 @@
 
 							{#if $currentTab.icon_url}
 								<div class="tooltip tooltip-left" data-tip="Favicon">
-									<img src={$currentTab.icon_url} alt="icon" class="w-6 h-6" />
+									<img src={$currentTab.icon_url} alt="icon" class="w-6 min-w-6 h-6 min-h-6" />
 								</div>
 							{:else}
 								<div class="tooltip tooltip-left" data-tip="Missing icon">
@@ -360,6 +365,7 @@
 						<input
 							type="text"
 							class="input input-bordered input-sm w-full max-w-60"
+							placeholder="Title..."
 							bind:value={$currentTab.title}
 						/>
 					</div>
@@ -472,7 +478,7 @@
 					<div class="collapse collapse-arrow bg-base-200">
 						<input type="checkbox" />
 						<div class="collapse-title text-lg font-medium">Show more details</div>
-						<div class="collapse-content space-y-1">
+						<div class="collapse-content space-y-2">
 							<!-- icon url -->
 							<div class="flex w-full items-center justify-between space-x-4">
 								<span>Icon:</span>
@@ -592,7 +598,7 @@
 									<span class="label-text">Send webpage screenshot</span>
 									<input
 										type="checkbox"
-										class="toggle"
+										class={`toggle toggle-primary`}
 										bind:checked={configuration.saveScreenshot}
 									/>
 								</label>
@@ -632,6 +638,8 @@
 				class="btn btn-secondary btn-sm"
 				on:click={() => ($updatedUrl = clearUrl($updatedUrl))}>Clear it!</button
 			>
+			<!-- svelte-ignore a11y-click-events-have-key-events -->
+			<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
 			<label
 				for="url_input_modal"
 				class="btn btn-primary btn-sm"
