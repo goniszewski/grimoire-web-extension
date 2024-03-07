@@ -1,7 +1,7 @@
 {
 	"name": "grimoire-companion",
 	"displayName": "grimoire companion",
-	"version": "0.0.1",
+	"version": "0.1.0",
 	"description": "Companion extension for Grimoire.",
 	"author": "Robert Goniszewski <robert@goniszewski.com>",
 	"scripts": {
