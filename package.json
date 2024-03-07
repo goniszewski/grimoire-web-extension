@@ -1,6 +1,6 @@
 {
-	"name": "grimoire",
-	"displayName": "Grimoire",
+	"name": "grimoire-companion",
+	"displayName": "grimoire companion",
 	"version": "0.0.1",
 	"description": "Companion extension for Grimoire.",
 	"author": "Robert Goniszewski <robert@goniszewski.com>",
@@ -40,6 +40,12 @@
 			"activeTab",
 			"scripting",
 			"storage"
-		]
+		],
+		"browser_specific_settings": {
+			"gecko": {
+				"id": "contact@grimoire.pro",
+				"strict_min_version": "109.0"
+			}
+		}
 	}
 }
