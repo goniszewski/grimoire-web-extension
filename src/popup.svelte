@@ -55,20 +55,20 @@
 	$: $updatedUrl = $currentTab.url;
 
 	async function onValidateGrimoireApiUrl() {
-		if (!configuration.grimoireApiUrl) {
+		if (!configuration?.grimoireApiUrl) {
 			$status.isGrimoireApiReachable = false;
 
 			showToast.error('Grimoire API URL is empty!');
 		}
 
-		const isGrimoireApiReachable = await validateGrimoireApiUrl(configuration.grimoireApiUrl).catch(
-			(error) => {
-				logger.error('onValidateGrimoireApiUrl', 'Error validating Grimoire API URL', error);
-				showToast(`Grimoire API is ${isGrimoireApiReachable}!`);
+		const isGrimoireApiReachable = await validateGrimoireApiUrl(
+			configuration?.grimoireApiUrl
+		).catch((error) => {
+			logger.error('onValidateGrimoireApiUrl', 'Error validating Grimoire API URL', error);
+			showToast(`Grimoire API is ${isGrimoireApiReachable}!`);
 
-				return false;
-			}
-		);
+			return false;
+		});
 
 		if ($status.isGrimoireApiReachable && !isGrimoireApiReachable) {
 			showToast.error('Grimoire API is not reachable!');
@@ -99,7 +99,7 @@
 			name: 'fetch-categories-tags',
 			body: {
 				token,
-				grimoireApiUrl: configuration.grimoireApiUrl
+				grimoireApiUrl: configuration?.grimoireApiUrl
 			}
 		});
 
@@ -125,7 +125,10 @@
 
 		const theme = await storage.get('theme');
 		token = await storage.get('token');
-		configuration = await storage.get('configuration');
+		configuration = (await storage.get('configuration')) || {
+			grimoireApiUrl: '',
+			saveScreenshot: false
+		};
 
 		if (theme) {
 			document.documentElement.setAttribute('data-theme', themes[theme]);
@@ -188,7 +191,7 @@
 		$loading.isSigningIn = true;
 
 		const newToken = await handleSignIn(
-			configuration.grimoireApiUrl,
+			configuration?.grimoireApiUrl,
 			$credentials.emailOrUsername,
 			$credentials.password
 		);
@@ -458,8 +461,8 @@
 								onAddBookmark(
 									$currentTab,
 									token,
-									configuration.grimoireApiUrl,
-									configuration.saveScreenshot
+									configuration?.grimoireApiUrl,
+									configuration?.saveScreenshot
 								)}
 							disabled={$loading.isAddingBookmark && !$loading.justAddedBookmark}
 						>

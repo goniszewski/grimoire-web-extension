@@ -27,6 +27,8 @@ export async function onAddBookmark(
 
 	let screenshot: string = '';
 
+	const iconIsDataUrl = $currentTab.icon_url.startsWith('data:');
+
 	try {
 		if (capturePageScreenshot) {
 			await new Promise((resolve) => {
@@ -62,7 +64,7 @@ export async function onAddBookmark(
 		logger.debug('onAddBookmark', 'Bookmark body', {
 			url: $currentTab.url,
 			title: $currentTab.title,
-			icon_url: $currentTab.icon_url,
+			icon_url: iconIsDataUrl ? '' : $currentTab.icon_url,
 			main_image_url: $currentTab.mainImage,
 			content_html: $currentTab.contentHtml,
 			description: $currentTab.description,
@@ -71,7 +73,8 @@ export async function onAddBookmark(
 			note: $currentTab.note,
 			importance: $currentTab.importance,
 			flagged: $currentTab.flagged,
-			screenshot
+			screenshot,
+			...(iconIsDataUrl ? { icon: $currentTab.icon_url } : {})
 		});
 
 		const response = await sendToBackground<
@@ -91,7 +94,7 @@ export async function onAddBookmark(
 				bookmark: {
 					url: $currentTab.url,
 					title: $currentTab.title,
-					icon_url: $currentTab.icon_url,
+					icon_url: iconIsDataUrl ? '' : $currentTab.icon_url,
 					main_image_url: $currentTab.mainImage,
 					content_html: $currentTab.contentHtml,
 					description: $currentTab.description,
@@ -100,7 +103,8 @@ export async function onAddBookmark(
 					note: $currentTab.note,
 					importance: $currentTab.importance,
 					flagged: $currentTab.flagged,
-					screenshot
+					screenshot,
+					...(iconIsDataUrl ? { icon: $currentTab.icon_url } : {})
 				}
 			}
 		});
