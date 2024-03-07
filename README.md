@@ -1,33 +1,74 @@
-This is a [Plasmo extension](https://docs.plasmo.com/) project bootstrapped with [`plasmo init`](https://www.npmjs.com/package/plasmo).
+<div align="center">
+  <img alt="Grimoire Logo" src="assets/icon.png">
+  <h1>grimoire companion</h1>
+  <p>Web extension for Grimoire - a bookmark manager for the wizards 🧙</p>
+<img alt="GitHub License" src="https://img.shields.io/github/license/goniszewski/grimoire-web-extension">
+<img alt="GitHub Release" src="https://img.shields.io/github/v/release/goniszewski/grimoire-web-extension">
+</div>
+<br>
 
-## Getting Started
+Adding bookmarks to Grimoire is now easier than ever! With the Grimoire Companion, you can add bookmarks to your Grimoire account directly from your browser. Just click the extension icon, select the category and tags, and press "Add Bookmark" - it's that simple!
 
-First, run the development server:
+## Features
+
+- add bookmarks to your Grimoire account directly from your browser 🔖
+- create new tags as you add bookmarks 🏷️
+- specify the importance and/or flag the bookmark ⭐
+- automatically fetch metadata from the website using the browser's API 🫶
+- choose if you want to add a screenshot of the website 📸
+
+## How to get it?
+
+TBD: The extension is yet to be reviewed and published on the Chrome Web Store and Firefox Add-ons.
+
+## Development
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/en/download/)
+- [PNPM](https://pnpm.io/installation)
+
+### Steps
 
 ```bash
+# Clone the repository
+git clone https://github.com/goniszewski/grimoire-web-extension
+
+# Install the dependencies
+pnpm i
+
+# Run the development version
 pnpm dev
-# or
-npm run dev
-```
 
-Open your browser and load the appropriate development build. For example, if you are developing for the chrome browser, using manifest v3, use: `build/chrome-mv3-dev`.
-
-You can start editing the popup by modifying `popup.tsx`. It should auto-update as you make changes. To add an options page, simply add a `options.tsx` file to the root of the project, with a react component default exported. Likewise to add a content page, add a `content.ts` file to the root of the project, importing some module and do some logic, then reload the extension on your browser.
-
-For further guidance, [visit our Documentation](https://docs.plasmo.com/)
-
-## Making production build
-
-Run the following:
-
-```bash
+# Build the production version (by default, this will create the Chrome extension for local development in `build/chrome-mv3-prod`)
 pnpm build
-# or
-npm run build
 ```
 
-This should create a production bundle for your extension, ready to be zipped and published to the stores.
+[How to load the extension in Chrome-based browsers](https://docs.plasmo.com/framework#loading-the-extension-in-chrome)
 
-## Submit to the webstores
+## Development
 
-The easiest way to deploy your Plasmo extension is to use the built-in [bpp](https://bpp.browser.market) GitHub action. Prior to using this action however, make sure to build your extension and upload the first version to the store to establish the basic credentials. Then, simply follow [this setup instruction](https://docs.plasmo.com/framework/workflows/submit) and you should be on your way for automated submission!
+Check out the [the official Plasmo documentation](https://docs.plasmo.com/) to learn more.
+
+## Roadmap
+
+- [x] Initial release (0.1.0) 🚀
+
+We're open to suggestions and feature requests! If you have an idea for a feature, please [open an issue](https://github.com/goniszewski/grimoire-web-extension/issues).
+
+## Contributing
+
+If you want to contribute to the project, please read the [contributing guide](CONTRIBUTING.md).
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
+## Credits
+
+Special thanks to: [DaisyUI](https://github.com/saadeghi/daisyui),
+[Plasmo](https://docs.plasmo.com),
+[Svelte](https://github.com/sveltejs/svelte),
+[Svelte French Toast](https://github.com/kbrgl/svelte-french-toast),
+[Svelte MultiSelect](https://github.com/janosh/svelte-multiselect),
+[Tailwind CSS](https://tailwindcss.com)
