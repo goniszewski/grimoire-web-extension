@@ -19,7 +19,9 @@ Adding bookmarks to Grimoire is now easier than ever! With the Grimoire Companio
 
 ## How to get it?
 
-TBD: The extension is yet to be reviewed and published on the Chrome Web Store and Firefox Add-ons.
+- [Firefox Add-ons](https://addons.mozilla.org/en-GB/firefox/addon/grimoire-companion/)
+- Chrome Web Store [pending review]
+- Microsoft Edge Add-ons [to be published]
 
 ## Development
 
