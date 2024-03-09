@@ -10,7 +10,7 @@ Here's the deal:
 
 ## Keeping it Simple
 
-We believe privacy policies shouldn't be complicated. If you have any questions, feel free to reach out to us at [your support email].
+We believe privacy policies shouldn't be complicated. If you have any questions, feel free to reach out to us at contact@grimoire.pro.
 
 ## Changes
 
