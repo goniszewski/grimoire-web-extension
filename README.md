@@ -17,6 +17,10 @@ Adding bookmarks to Grimoire is now easier than ever! With the Grimoire Companio
 - automatically fetch metadata from the website using the browser's API 🫶
 - choose if you want to add a screenshot of the website 📸
 
+<div align="center">
+  <img alt="Grimoire Companion Screenshot" src="assets/screenshot_1280_800.png">
+</div>
+
 ## How to get it?
 
 - [Firefox Add-ons](https://addons.mozilla.org/en-GB/firefox/addon/grimoire-companion/)
