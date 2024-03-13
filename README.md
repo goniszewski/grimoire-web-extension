@@ -21,11 +21,18 @@ Adding bookmarks to Grimoire is now easier than ever! With the Grimoire Companio
   <img alt="Grimoire Companion Screenshot" src="assets/screenshot_1280_800.png">
 </div>
 
-## How to get it?
+## Where to get it?
 
-- [Firefox Add-ons](https://addons.mozilla.org/en-GB/firefox/addon/grimoire-companion/)
-- [Chrome Web Store](https://addons.mozilla.org/en-GB/firefox/addon/grimoire-companion/)
-- Microsoft Edge Add-ons [to be published]
+At the moment, _grimoire companion_ is available for download on the following platforms:
+
+<div align="center">
+<a href="https://addons.mozilla.org/en-GB/firefox/addon/grimoire-companion/">
+    <img alt="Firefox Add-ons" src="assets/firefox-addons-button.webp">
+  </a>
+  <a href="https://addons.mozilla.org/en-GB/firefox/addon/grimoire-companion/">
+    <img alt="Chrome Web Store" src="assets/chrome-web-store-button.png">
+  </a>
+</div>
 
 ## Development
 
