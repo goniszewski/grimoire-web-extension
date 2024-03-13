@@ -51,6 +51,7 @@
 		saveScreenshot: false
 	};
 	let validationInterval: NodeJS.Timeout;
+	let missingPermissions = false;
 
 	$: $updatedUrl = $currentTab.url;
 
@@ -83,6 +84,15 @@
 			...$status,
 			isGrimoireApiReachable
 		};
+	}
+
+	async function handleGrimoireApiUrlChange() {
+		storage.set('configuration', configuration);
+
+		logger.debug('handleGrimoireApiUrlChange', 'Configuration changed', configuration);
+		showToast.success('Configuration saved! 🪶');
+
+		return onValidateGrimoireApiUrl();
 	}
 
 	async function fetchUserData() {
@@ -120,8 +130,36 @@
 		return true;
 	}
 
+	async function requestPermissions() {
+		return chrome.permissions
+			.request({
+				origins: ['<all_urls>']
+			})
+			.then((granted) => {
+				if (granted) {
+					logger.debug('requestPermissions', 'Necessary permission granted');
+					missingPermissions = false;
+				} else {
+					logger.error('requestPermissions', 'Necessary permission denied');
+				}
+			});
+	}
+
 	onMount(async () => {
 		logger.debug('popup.onMount', 'init');
+
+		missingPermissions = !(await chrome.permissions.contains({
+			origins: ['<all_urls>']
+		}));
+
+		if (missingPermissions) {
+			$status = {
+				...$status,
+				isGrimoireApiReachable: false
+			};
+
+			return;
+		}
 
 		const theme = await storage.get('theme');
 		token = await storage.get('token');
@@ -178,13 +216,13 @@
 
 		logger.debug('onMount', 'validationInterval', 'initiating');
 
-		validationInterval = setInterval(() => {
-			onValidateGrimoireApiUrl();
-		}, 5000);
+		// validationInterval = setInterval(() => {
+		// 	onValidateGrimoireApiUrl();
+		// }, 5000);
 	});
 
 	onDestroy(() => {
-		clearInterval(validationInterval);
+		// clearInterval(validationInterval);
 	});
 
 	async function signIn() {
@@ -227,7 +265,21 @@
 </script>
 
 <div class="drawer drawer-end min-h-max min-w-80 max-w-80">
-	{#if !$status.isGrimoireApiReachable}
+	{#if missingPermissions}
+		<div class="container flex flex-col min-w-80 max-w-80 min-h-96 p-8">
+			<h2 class="text-xl font-semibold text-center mt-1 mb-4">Permissions required</h2>
+			Before we continue, please grant this extension the necessary permissions.
+			<h3 class="text-lg font-semibold mt-1 mb-4">They will allow us to:</h3>
+			<ul class="list-disc list-inside">
+				<li>connect to your Grimoire instance</li>
+				<li>take screenshots of webpages</li>
+			</ul>
+
+			<button class="btn btn-secondary btn-sm w-full max-w-xs my-4" on:click={requestPermissions}>
+				Request permissions
+			</button>
+		</div>
+	{:else if !$status.isGrimoireApiReachable}
 		<div class="container flex flex-col min-w-80 max-w-80 min-h-96 p-8">
 			<h2 class="text-2xl font-semibold text-center mt-1 mb-4">Sign in</h2>
 			<p class="text-accent text-center mb-4">
@@ -247,7 +299,7 @@
 				bind:value={configuration.grimoireApiUrl}
 				on:keyup={(e) => {
 					if (e.key === 'Enter') {
-						onValidateGrimoireApiUrl();
+						handleGrimoireApiUrlChange();
 					}
 				}}
 			/>
@@ -256,7 +308,7 @@
 			{/if}
 			<button
 				class="btn btn-primary btn-sm w-full max-w-xs my-4"
-				on:click={() => onValidateGrimoireApiUrl()}>Try to connect</button
+				on:click={() => handleGrimoireApiUrlChange()}>Try to connect</button
 			>
 		</div>
 	{:else if !token}

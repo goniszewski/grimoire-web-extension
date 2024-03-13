@@ -31,12 +31,18 @@ export async function onAddBookmark(
 
 	try {
 		if (capturePageScreenshot) {
+			logger.debug('onAddBookmark', 'Capturing page screenshot');
 			await new Promise((resolve) => {
 				chrome.tabs.captureVisibleTab(function (screenshotDataUrl) {
 					const screenshotImage = new Image();
 					screenshotImage.src = screenshotDataUrl;
 					screenshotImage.onload = function () {
 						const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+						logger.debug('onAddBookmark', 'Screenshot loaded', {
+							width: screenshotImage.width,
+							height: screenshotImage.height
+						});
 
 						const canvas = document.createElement('canvas');
 						const ctx = canvas.getContext('2d');
@@ -47,12 +53,19 @@ export async function onAddBookmark(
 						canvas.width = (screenshotImage.width / screenshotImage.height) * 800;
 						ctx.drawImage(screenshotImage, 0, 0, canvas.width, canvas.height);
 
+						logger.debug('onAddBookmark', 'Screenshot resized', {
+							width: canvas.width,
+							height: canvas.height
+						});
+
 						// Safari doesn't currently support converting to webp :(
 						// https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/toDataURL#browser_compatibility
 						const resizedScreenshotDataUrl = canvas.toDataURL(
 							isSafari ? 'image/jpeg' : 'image/webp',
 							0.8
 						);
+
+						logger.debug('onAddBookmark', 'Screenshot converted to data URL');
 
 						screenshot = resizedScreenshotDataUrl;
 
@@ -115,7 +128,7 @@ export async function onAddBookmark(
 
 		updateOnAddBookmarkLoading(!response.bookmark);
 	} catch (error) {
-		logger.error('onAddBookmark', 'Error adding bookmark', error);
+		logger.error('onAddBookmark', 'Error adding bookmark', error?.message);
 
 		updateOnAddBookmarkLoading(true);
 		showToast.error("Couldn't add bookmark. Please try again.");
