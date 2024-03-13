@@ -29,7 +29,7 @@ At the moment, _grimoire companion_ is available for download on the following p
 <a href="https://addons.mozilla.org/en-GB/firefox/addon/grimoire-companion/">
     <img alt="Firefox Add-ons" src="assets/firefox-addons-button.webp">
   </a>
-  <a href="https://addons.mozilla.org/en-GB/firefox/addon/grimoire-companion/">
+  <a href="https://chromewebstore.google.com/detail/grimoire-companion/mbciogjbnegofhhhlcbmlobjcgjdbgfh">
     <img alt="Chrome Web Store" src="assets/chrome-web-store-button.png">
   </a>
 </div>
