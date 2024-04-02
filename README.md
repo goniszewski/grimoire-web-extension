@@ -32,6 +32,7 @@ At the moment, _grimoire companion_ is available for download on the following p
   <a href="https://chromewebstore.google.com/detail/grimoire-companion/mbciogjbnegofhhhlcbmlobjcgjdbgfh">
     <img alt="Chrome Web Store" src="assets/chrome-web-store-button.png">
   </a>
+<a href="https://app.fossa.com/projects/git%2Bgithub.com%2Fgoniszewski%2Fgrimoire-web-extension?ref=badge_shield" alt="FOSSA Status"><img src="https://app.fossa.com/api/projects/git%2Bgithub.com%2Fgoniszewski%2Fgrimoire-web-extension.svg?type=shield"/></a>
 </div>
 
 ## Development
@@ -76,6 +77,9 @@ If you want to contribute to the project, please read the [contributing guide](C
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
+
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fgoniszewski%2Fgrimoire-web-extension.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fgoniszewski%2Fgrimoire-web-extension?ref=badge_large)
 
 ## Credits
 
