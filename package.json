@@ -16,7 +16,7 @@
 		"daisyui": "^4.6.1",
 		"plasmo": "0.85.0",
 		"prettier-plugin-svelte": "^3.1.2",
-		"svelte": "^4.2.9",
+		"svelte": "^4.2.19",
 		"svelte-french-toast": "^1.2.0",
 		"svelte-preprocess": "^5.1.3"
 	},
