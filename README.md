@@ -1,87 +1,64 @@
-<div align="center">
-  <img alt="Grimoire Logo" src="assets/icon.png">
-  <h1>grimoire companion</h1>
-  <p>Web extension for Grimoire - a bookmark manager for the wizards 🧙</p>
-<img alt="GitHub License" src="https://img.shields.io/github/license/goniszewski/grimoire-web-extension">
-<img alt="GitHub Release" src="https://img.shields.io/github/v/release/goniszewski/grimoire-web-extension">
-</div>
-<br>
+# Grimoire Companion
 
-Adding bookmarks to Grimoire is now easier than ever! With the Grimoire Companion, you can add bookmarks to your Grimoire account directly from your browser. Just click the extension icon, select the category and tags, and press "Add Bookmark" - it's that simple!
+Grimoire Companion saves the active browser page to a Grimoire library. The
+current rewrite targets Grimoire's local daemon and its managed integration
+tokens while retaining a temporary compatibility path for Grimoire 0.5.x.
 
-## Features
+## Current development scope
 
-- add bookmarks to your Grimoire account directly from your browser 🔖
-- create new tags as you add bookmarks 🏷️
-- specify the importance and/or flag the bookmark ⭐
-- automatically fetch metadata from the website using the browser's API 🫶
-- choose if you want to add a screenshot of the website 📸
+- Chrome and Firefox builds from one WXT/React/TypeScript codebase
+- protocol discovery through the unauthenticated health response
+- authenticated current-Grimoire capability negotiation
+- confirmed capture results, including an honest active-duplicate result
+- category, tag, note, and selected-text capture
+- migration of the old extension configuration from browser sync storage to
+  local extension storage
+- temporary legacy login and bookmark payload support for existing store users
+- explicit Firefox disclosure for the authentication, current-page URL, and
+  selected page content sent to the user-selected Grimoire instance
 
-<div align="center">
-  <img alt="Grimoire Companion Screenshot" src="assets/screenshot_1280_800.png">
-</div>
+The extension requests permanent access only to loopback Grimoire addresses.
+Access to any user-configured remote instance is requested at connection time.
+It does not read browser history or collect page HTML in the background.
 
-## Where to get it?
-
-At the moment, _grimoire companion_ is available for download on the following platforms:
-
-<div align="center">
-<a href="https://addons.mozilla.org/en-GB/firefox/addon/grimoire-companion/">
-    <img alt="Firefox Add-ons" src="assets/firefox-addons-button.webp">
-  </a>
-  <a href="https://chromewebstore.google.com/detail/grimoire-companion/mbciogjbnegofhhhlcbmlobjcgjdbgfh">
-    <img alt="Chrome Web Store" src="assets/chrome-web-store-button.png">
-  </a>
-</div>
+Current Grimoire users create a named token under **Settings → Browser
+Integration**, then paste that one-time token into the extension. Grimoire must
+include Companion protocol v1; the extension verifies this during connection.
 
 ## Development
-
-### Prerequisites
-
-- [Node.js](https://nodejs.org/en/download/)
-- [PNPM](https://pnpm.io/installation)
-
-### Steps
 
 ```bash
-# Clone the repository
-git clone https://github.com/goniszewski/grimoire-web-extension
-
-# Install the dependencies
-pnpm i
-
-# Run the development version
-pnpm dev
-
-# Build the production version (by default, this will create the Chrome extension for local development in `build/chrome-mv3-prod`)
-pnpm build
+pnpm install
+pnpm run type-check
+pnpm test
+pnpm run build
+pnpm run build:firefox
 ```
 
-[How to load the extension in Chrome-based browsers](https://docs.plasmo.com/framework#loading-the-extension-in-chrome)
+Build output is written under `.output/`. Use `pnpm dev` for an unpacked Chrome
+development profile or `pnpm dev -- -b firefox` for Firefox.
 
-## Development
+The Firefox build requires Firefox 140 or newer so its built-in data-transfer
+consent describes the local Grimoire connection during installation.
 
-Check out the [the official Plasmo documentation](https://docs.plasmo.com/) to learn more.
+## Store availability
 
-## Roadmap
+The existing [Chrome Web Store](https://chromewebstore.google.com/detail/grimoire-companion/mbciogjbnegofhhhlcbmlobjcgjdbgfh)
+and [Firefox Add-ons](https://addons.mozilla.org/en-GB/firefox/addon/grimoire-companion/)
+listings continue to provide the legacy release until this rewrite is reviewed
+and published.
 
-- [x] Initial release (0.1.0) 🚀
+## Release strategy
 
-We're open to suggestions and feature requests! If you have an idea for a feature, please [open an issue](https://github.com/goniszewski/grimoire-web-extension/issues).
+The intended production path is to update the existing Chrome Web Store and
+Firefox Add-ons listings so current users retain the established extension
+identity. Store updates normally replace installed older versions, so the first
+compatible release must include the legacy protocol path and a clear reconnect
+experience. A separate listing may be used for pre-release testing, subject to
+store duplicate-content rules; it is not the planned production identity.
 
-## Contributing
-
-If you want to contribute to the project, please read the [contributing guide](CONTRIBUTING.md).
+No store submission is performed by the build commands.
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
-
-## Credits
-
-Special thanks to: [DaisyUI](https://github.com/saadeghi/daisyui),
-[Plasmo](https://docs.plasmo.com),
-[Svelte](https://github.com/sveltejs/svelte),
-[Svelte French Toast](https://github.com/kbrgl/svelte-french-toast),
-[Svelte MultiSelect](https://github.com/janosh/svelte-multiselect),
-[Tailwind CSS](https://tailwindcss.com)
+MIT. See [LICENSE](LICENSE).

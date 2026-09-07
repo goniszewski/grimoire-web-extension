@@ -1,21 +1,28 @@
-## Our Privacy Policy
+# Grimoire Companion privacy policy
 
-We get it – privacy is important. That's why we've designed this Chrome extension to be as privacy-friendly as possible.
+Last updated: September 7, 2026.
 
-Here's the deal:
+Grimoire Companion sends information only to the Grimoire address chosen by
+the user. A capture may contain the page URL and title, user-entered tags,
+category and notes, and text the user selected on the page. The extension does
+not send page HTML, browser history, cookies, passwords, or ambient page storage
+as part of current capture.
 
-- **We don't collect any of your personal data.** That means no names, no emails, no browsing history – nothing that could identify you.
-- **This extension only talks to your own Grimoire API instance.** It doesn't send any data to third-parties or any mysterious servers.
-- **We won't track how you use the extension.** We want you to have full control over your experience.
+Firefox classifies this user-directed transfer to Grimoire as authentication
+information, browsing activity, and website content. Those required data types
+are declared in the Firefox manifest. They describe the core save action and do
+not indicate transmission to the extension publisher or another third party.
 
-## Keeping it Simple
+The extension does not contain analytics, advertising, crash reporting, or a
+remote application logger. It does not sell or share user data.
 
-We believe privacy policies shouldn't be complicated. If you have any questions, feel free to reach out to us at contact@grimoire.pro.
+Connection settings and tokens are stored in the browser's local extension
+storage. During upgrade from version 0.1.3, an existing legacy connection may be
+copied once from browser sync storage into local storage; the copied legacy
+token and configuration are then removed from sync storage. Extension-local
+storage is controlled by the browser and is not an operating-system keychain.
 
-## Changes
+Permanent host access is limited to `localhost` and `127.0.0.1`. When a user
+chooses another Grimoire address, the browser asks for access to that origin.
 
-We might update this policy if we make changes to the extension. We'll let you know if that happens!
-
-## Contact Us
-
-If you have any questions about this Privacy Policy, please contact us at contact@grimoire.pro.
+Questions can be sent to contact@grimoire.pro.
