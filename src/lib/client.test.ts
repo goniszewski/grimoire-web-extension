@@ -91,8 +91,8 @@ describe("capture", () => {
     expect(JSON.parse(String(request.body))).toMatchObject({
       url: "https://example.com/?v=1#part",
       notes: "Keep",
-        is_pinned: 1,
-        read_later: 1,
+      is_pinned: true,
+      read_later: true,
       source: { client: "grimoire-companion" },
     });
   });

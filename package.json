@@ -5,6 +5,7 @@
   "description": "Save pages to your local Grimoire library.",
   "author": "Robert Goniszewski <robert@goniszewski.com>",
   "scripts": {
+    "postinstall": "wxt prepare",
     "dev": "wxt",
     "build": "wxt build",
     "build:firefox": "wxt build -b firefox",
