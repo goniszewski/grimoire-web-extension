@@ -1,5 +1,5 @@
 import { normalizeEndpoint } from "./endpoint";
-import type { CaptureDraft, CaptureResult, Category, ConnectionConfig, ConnectionState, Taxonomy } from "./types";
+import type { BatchCaptureResult, CaptureDraft, CaptureResult, Category, ConnectionConfig, ConnectionState, Taxonomy } from "./types";
 
 export class ClientError extends Error {
   constructor(
@@ -79,7 +79,15 @@ export async function connectCurrent(endpoint: string, token: string): Promise<C
   if (body.data?.protocol !== "grimoire-browser-capture" || body.data?.protocol_version !== 1) {
     throw new ClientError("incompatible", "This Grimoire version does not support Companion protocol v1");
   }
-  return { endpoint: base, protocol: "current", token: token.trim() };
+  return {
+    endpoint: base,
+    protocol: "current",
+    token: token.trim(),
+    captureFields: {
+      isPinned: body.data?.capture_fields?.is_pinned === true,
+      readLater: body.data?.capture_fields?.read_later === true,
+    },
+  };
 }
 
 export async function loginLegacy(endpoint: string, login: string, password: string): Promise<ConnectionConfig> {
@@ -142,6 +150,8 @@ export async function capture(connection: ConnectionConfig, draft: CaptureDraft)
     ...(draft.categoryId ? { category_id: draft.categoryId } : {}),
     tags: draft.tags,
     ...(draft.notes ? { notes: draft.notes } : {}),
+    ...(connection.captureFields?.isPinned ? { is_pinned: draft.isPinned } : {}),
+    ...(connection.captureFields?.readLater ? { read_later: draft.readLater } : {}),
     source: {
       client: "grimoire-companion",
       source_url: draft.url,
@@ -157,7 +167,7 @@ export async function capture(connection: ConnectionConfig, draft: CaptureDraft)
     description: "",
     content_html: "",
     importance: 0,
-    flagged: false,
+    flagged: draft.isPinned,
     screenshot: "",
   };
   const route = connection.protocol === "current" ? "capture" : "bookmarks";
@@ -178,4 +188,25 @@ export async function capture(connection: ConnectionConfig, draft: CaptureDraft)
     throw new ClientError("invalid-response", "Legacy Grimoire did not return the saved bookmark");
   }
   return { bookmarkId: String(body.bookmark.id), created: true };
+}
+
+export async function captureMany(
+  connection: ConnectionConfig,
+  drafts: CaptureDraft[],
+): Promise<BatchCaptureResult> {
+  const result: BatchCaptureResult = { created: 0, duplicates: 0, failed: 0, failures: [] };
+  for (const draft of drafts) {
+    try {
+      const captured = await capture(connection, draft);
+      if (captured.created) result.created += 1;
+      else result.duplicates += 1;
+    } catch (error) {
+      result.failed += 1;
+      result.failures.push({
+        title: draft.title,
+        detail: error instanceof Error ? error.message : "Unexpected error",
+      });
+    }
+  }
+  return result;
 }

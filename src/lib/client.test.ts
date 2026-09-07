@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { capture, connectCurrent, discover, fetchTaxonomy, loginLegacy } from "./client";
+import { capture, captureMany, connectCurrent, discover, fetchTaxonomy, loginLegacy } from "./client";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -17,12 +17,17 @@ describe("protocol discovery", () => {
 
   it("requires the versioned capability response before saving a current token", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      data: { protocol: "grimoire-browser-capture", protocol_version: 1 },
+      data: {
+        protocol: "grimoire-browser-capture",
+        protocol_version: 1,
+        capture_fields: { is_pinned: true, read_later: true },
+      },
     }))));
     await expect(connectCurrent("http://127.0.0.1:3210", "limp_it_test")).resolves.toEqual({
       endpoint: "http://127.0.0.1:3210",
       protocol: "current",
       token: "limp_it_test",
+      captureFields: { isPinned: true, readLater: true },
     });
   });
 
@@ -79,15 +84,31 @@ describe("capture", () => {
     })));
     vi.stubGlobal("fetch", fetchMock);
     await expect(capture(
-      { endpoint: "http://127.0.0.1:3210", protocol: "current", token: "secret" },
-      { url: "https://example.com/?v=1#part", title: "Example", tags: ["reference"], notes: "Keep" },
+      { endpoint: "http://127.0.0.1:3210", protocol: "current", token: "secret", captureFields: { isPinned: true, readLater: true } },
+      { url: "https://example.com/?v=1#part", title: "Example", tags: ["reference"], notes: "Keep", isPinned: true, readLater: true },
     )).resolves.toEqual({ bookmarkId: "bookmark-1", created: false });
     const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
     expect(JSON.parse(String(request.body))).toMatchObject({
       url: "https://example.com/?v=1#part",
       notes: "Keep",
+        is_pinned: 1,
+        read_later: 1,
       source: { client: "grimoire-companion" },
     });
+  });
+
+  it("omits optional state fields for an earlier v1 daemon", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      data: { bookmark: { id: "bookmark-2" }, created: true },
+    })));
+    vi.stubGlobal("fetch", fetchMock);
+    await capture(
+      { endpoint: "http://127.0.0.1:3210", protocol: "current", token: "secret" },
+      { url: "https://example.com/compat", title: "Compatible", tags: [], isPinned: true, readLater: true },
+    );
+    const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(JSON.parse(String(request.body))).not.toHaveProperty("is_pinned");
+    expect(JSON.parse(String(request.body))).not.toHaveProperty("read_later");
   });
 
   it("keeps the legacy payload available during the migration window", async () => {
@@ -95,13 +116,38 @@ describe("capture", () => {
     vi.stubGlobal("fetch", fetchMock);
     await expect(capture(
       { endpoint: "https://legacy.example.test/api", protocol: "legacy", token: "session" },
-      { url: "https://example.com", title: "Example", categoryId: "pb_category_7", tags: ["saved"], notes: "Legacy" },
+      { url: "https://example.com", title: "Example", categoryId: "pb_category_7", tags: ["saved"], notes: "Legacy", isPinned: true, readLater: false },
     )).resolves.toEqual({ bookmarkId: "42", created: true });
     const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
     expect(JSON.parse(String(request.body))).toMatchObject({
       category: "pb_category_7",
       note: "Legacy",
       importance: 0,
+      flagged: true,
     });
+  });
+
+  it("continues a batch after a failed tab and reports each outcome", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ data: { bookmark: { id: "new" }, created: true } })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ detail: "Invalid URL" }), { status: 422 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ data: { bookmark: { id: "old" }, created: false } })));
+    vi.stubGlobal("fetch", fetchMock);
+    const baseDraft = { tags: [], isPinned: false, readLater: false };
+
+    await expect(captureMany(
+      { endpoint: "http://127.0.0.1:3210", protocol: "current", token: "secret" },
+      [
+        { ...baseDraft, url: "https://one.example", title: "One" },
+        { ...baseDraft, url: "https://two.example", title: "Two" },
+        { ...baseDraft, url: "https://three.example", title: "Three" },
+      ],
+    )).resolves.toEqual({
+      created: 1,
+      duplicates: 1,
+      failed: 1,
+      failures: [{ title: "Two", detail: "Invalid URL" }],
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 });

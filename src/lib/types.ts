@@ -4,6 +4,10 @@ export interface ConnectionConfig {
   endpoint: string;
   protocol: Protocol;
   token: string;
+  captureFields?: {
+    isPinned: boolean;
+    readLater: boolean;
+  };
 }
 
 export interface Category {
@@ -25,11 +29,20 @@ export interface CaptureDraft {
   tags: string[];
   notes?: string;
   selectedText?: string;
+  isPinned: boolean;
+  readLater: boolean;
 }
 
 export interface CaptureResult {
   bookmarkId: string;
   created: boolean;
+}
+
+export interface BatchCaptureResult {
+  created: number;
+  duplicates: number;
+  failed: number;
+  failures: Array<{ title: string; detail: string }>;
 }
 
 export type ConnectionState =
@@ -43,6 +56,7 @@ export type BackgroundRequest =
   | { type: "login-legacy"; endpoint: string; login: string; password: string }
   | { type: "taxonomy" }
   | { type: "capture"; draft: CaptureDraft }
+  | { type: "capture-many"; drafts: CaptureDraft[] }
   | { type: "disconnect" };
 
 export type BackgroundResponse =

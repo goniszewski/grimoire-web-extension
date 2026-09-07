@@ -2,7 +2,7 @@ import { defineConfig } from "wxt";
 
 export default defineConfig({
   modules: ["@wxt-dev/module-react"],
-  manifest: ({ manifestVersion }) => ({
+  manifest: ({ browser, manifestVersion }) => ({
     name: "Grimoire Companion",
     description: "Save pages to your local Grimoire library.",
     icons: {
@@ -11,12 +11,12 @@ export default defineConfig({
       48: "icons/icon-48.png",
       128: "icons/icon-128.png",
     },
-    permissions: ["activeTab", "storage", "scripting"],
+    permissions: ["activeTab", "storage", "scripting", "tabs"],
     host_permissions: ["http://127.0.0.1/*", "http://localhost/*"],
     ...(manifestVersion === 2
       ? { optional_permissions: ["http://*/*", "https://*/*"] }
       : { optional_host_permissions: ["http://*/*", "https://*/*"] }),
-    browser_specific_settings: {
+    ...(browser === "firefox" ? { browser_specific_settings: {
       gecko: {
         id: "contact@grimoire.pro",
         strict_min_version: "140.0",
@@ -24,7 +24,7 @@ export default defineConfig({
           required: ["authenticationInfo", "browsingActivity", "websiteContent"],
         },
       },
-    },
+    } } : {}),
     content_security_policy: {
       extension_pages: "script-src 'self'; object-src 'self'",
     },
