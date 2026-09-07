@@ -1,7 +1,7 @@
 {
   "name": "grimoire-companion",
   "displayName": "Grimoire Companion",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "Save pages to your local Grimoire library.",
   "author": "Robert Goniszewski <robert@goniszewski.com>",
   "scripts": {

@@ -1,10 +1,10 @@
 # Grimoire Companion
 
 Grimoire Companion saves the active browser page to a Grimoire library. The
-current rewrite targets Grimoire's local daemon and its managed integration
+version 1.0 targets Grimoire's local daemon and its managed integration
 tokens while retaining a temporary compatibility path for Grimoire 0.5.x.
 
-## Current development scope
+## Version 1.0
 
 - Chrome, Firefox, and Safari web-extension builds from one WXT/React/TypeScript codebase
 - protocol discovery through the unauthenticated health response
