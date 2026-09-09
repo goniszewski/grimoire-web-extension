@@ -20,6 +20,19 @@ interface OpenTabDetails extends PageDetails {
   active: boolean;
 }
 
+export function toggleVisibleTabSelection(
+  selectedIds: ReadonlySet<number>,
+  visibleIds: readonly number[],
+): Set<number> {
+  const next = new Set(selectedIds);
+  const clearVisible = visibleIds.length > 0 && visibleIds.every((id) => next.has(id));
+  for (const id of visibleIds) {
+    if (clearVisible) next.delete(id);
+    else next.add(id);
+  }
+  return next;
+}
+
 async function send<T>(message: BackgroundRequest): Promise<T> {
   const response = await browser.runtime.sendMessage(message) as BackgroundResponse;
   if (!response.ok) throw new Error(response.detail);
@@ -140,6 +153,8 @@ export function App() {
       ? openTabs.filter((tab) => `${tab.title} ${tab.domain} ${tab.url}`.toLowerCase().includes(needle))
       : openTabs;
   }, [openTabs, tabFilter]);
+  const allVisibleTabsSelected = visibleTabs.length > 0
+    && visibleTabs.every((tab) => selectedTabIds.has(tab.id));
   const batchSizeExceeded = mode === "bulk" && selectedTabIds.size > MAX_BATCH_SIZE;
 
   useEffect(() => {
@@ -377,7 +392,15 @@ export function App() {
           <strong>{selectedTabIds.size} of {openTabs.length} selected</strong>
           <div>
             <button type="button" className="compact-button" disabled={loadingTabs} aria-label="Refresh open tabs" title="Refresh open tabs" onClick={() => void loadOpenTabs()}><RefreshCw className={loadingTabs ? "spinner" : ""} size={13} /></button>
-            <button type="button" className="text-button" onClick={() => setSelectedTabIds(selectedTabIds.size === openTabs.length ? new Set() : new Set(openTabs.map((tab) => tab.id)))}>{selectedTabIds.size === openTabs.length ? "Clear" : "Select all"}</button>
+            <button
+              type="button"
+              className="text-button"
+              disabled={visibleTabs.length === 0}
+              onClick={() => setSelectedTabIds((current) => toggleVisibleTabSelection(
+                current,
+                visibleTabs.map((tab) => tab.id),
+              ))}
+            >{allVisibleTabsSelected ? "Clear visible" : "Select visible"}</button>
           </div>
         </div>
         {batchSizeExceeded && (

@@ -12,7 +12,7 @@
     "build:safari": "wxt build -b safari",
     "package": "wxt zip",
     "package:firefox": "wxt zip -b firefox",
-    "package:safari": "pnpm run build:safari && xcrun safari-web-extension-packager .output/safari-mv2 --project-location .output/safari --app-name 'Grimoire Companion' --bundle-identifier com.goniszewski.Grimoire-Companion --swift --macos-only --copy-resources --no-open --no-prompt --force",
+    "package:safari": "pnpm run build:safari && xcrun safari-web-extension-packager .output/safari-mv2 --project-location .output/safari --app-name 'Grimoire Companion' --bundle-identifier com.goniszewski.Grimoire-Companion --swift --macos-only --copy-resources --no-open --no-prompt --force && node scripts/set-safari-deployment-target.mjs",
     "type-check": "tsc --noEmit",
     "test": "vitest run"
   },

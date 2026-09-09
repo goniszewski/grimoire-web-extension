@@ -1,3 +1,11 @@
+function isLoopbackHostname(hostname: string): boolean {
+  const normalized = hostname.toLowerCase().replace(/\.$/, "");
+  return normalized === "localhost"
+    || normalized.endsWith(".localhost")
+    || normalized === "[::1]"
+    || normalized === "127.0.0.1";
+}
+
 export function normalizeEndpoint(raw: string): string {
   const parsed = new URL(raw.trim());
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
@@ -5,6 +13,9 @@ export function normalizeEndpoint(raw: string): string {
   }
   if (parsed.username || parsed.password) {
     throw new Error("Grimoire URL must not contain credentials");
+  }
+  if (parsed.protocol === "http:" && !isLoopbackHostname(parsed.hostname)) {
+    throw new Error("Remote Grimoire addresses must use HTTPS");
   }
   parsed.search = "";
   parsed.hash = "";

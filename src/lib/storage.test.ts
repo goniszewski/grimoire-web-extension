@@ -52,6 +52,19 @@ describe("legacy storage migration", () => {
     expect(state.sync).not.toHaveProperty("token");
   });
 
+  it("does not migrate credentials for a plaintext remote endpoint", async () => {
+    const state = installStorage({}, {
+      configuration: JSON.stringify({ grimoireApiUrl: "http://library.example.test/api" }),
+      token: JSON.stringify("legacy-session"),
+    });
+
+    await expect(migrateLegacySyncStorage()).resolves.toBeNull();
+    expect(state.local).not.toHaveProperty("connection-v1");
+    expect(state.local["legacy-sync-migration-v1"]).toBe(true);
+    expect(state.sync).not.toHaveProperty("token");
+    expect(state.sync).not.toHaveProperty("configuration");
+  });
+
   it("removes a lingering synchronized token when a local connection already exists", async () => {
     const connection = { endpoint: "http://127.0.0.1:3210", protocol: "current", token: "current-token" };
     const state = installStorage({ "connection-v1": connection }, { token: "legacy-session" });

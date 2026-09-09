@@ -24,6 +24,8 @@ tokens while retaining a temporary compatibility path for Grimoire 0.5.x.
 
 The extension requests permanent access only to loopback Grimoire addresses.
 Access to any user-configured remote instance is requested at connection time.
+Remote instances must use HTTPS so integration tokens and legacy credentials
+are never sent over a plaintext network connection.
 The `tabs` permission lets the popup list the titles, addresses, and favicons of
 currently open tabs for user-initiated bulk capture. It does not read browser
 history or collect page HTML in the background.
@@ -50,10 +52,11 @@ Build output is written under `.output/`. Use `pnpm dev` for an unpacked Chrome
 development profile or `pnpm dev -- -b firefox` for Firefox.
 
 `pnpm run package:safari` generates an unsigned macOS Safari Web Extension
-Xcode project under `.output/safari/`. Building for local use or App Store
-distribution requires selecting an Apple Developer team in Xcode. Safari web
-extensions are delivered inside a containing app, so the Chrome and Firefox
-ZIP files cannot be installed in Safari directly.
+Xcode project under `.output/safari/` with macOS 13.0 as its deployment target.
+Building for local use or App Store distribution requires selecting an Apple
+Developer team in Xcode. Safari web extensions are delivered inside a
+containing app, so the Chrome and Firefox ZIP files cannot be installed in
+Safari directly.
 
 The Firefox build requires Firefox 140 or newer so its built-in data-transfer
 consent describes the local Grimoire connection during installation.

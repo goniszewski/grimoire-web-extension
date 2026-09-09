@@ -23,6 +23,7 @@ token and configuration are then removed from sync storage. Extension-local
 storage is controlled by the browser and is not an operating-system keychain.
 
 Permanent host access is limited to `localhost` and `127.0.0.1`. When a user
-chooses another Grimoire address, the browser asks for access to that origin.
+chooses another Grimoire address, it must use HTTPS and the browser asks for
+access to that origin.
 
 Questions can be sent to contact@grimoire.pro.
