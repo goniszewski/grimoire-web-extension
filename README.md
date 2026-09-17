@@ -53,13 +53,17 @@ development profile or `pnpm dev -- -b firefox` for Firefox.
 
 `pnpm run package:safari` generates an unsigned macOS Safari Web Extension
 Xcode project under `.output/safari/` with macOS 13.0 as its deployment target.
-Building for local use or App Store distribution requires selecting an Apple
-Developer team in Xcode. Safari web extensions are delivered inside a
-containing app, so the Chrome and Firefox ZIP files cannot be installed in
-Safari directly.
+Normal Safari distribution requires a signed containing app and an Apple
+Developer team. Unsigned local testing is covered in the [guide](docs/unsigned-installation.md); use the
+Safari build rather than the Chrome or Firefox package.
 
 The Firefox build requires Firefox 140 or newer so its built-in data-transfer
 consent describes the local Grimoire connection during installation.
+
+## Try locally without signing
+
+See the [unsigned installation guide](docs/unsigned-installation.md) for Chrome,
+Firefox, and Safari local testing, including setup and restart limitations.
 
 ## Store availability
 
