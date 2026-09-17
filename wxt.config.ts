@@ -2,6 +2,15 @@ import { defineConfig } from "wxt";
 
 export default defineConfig({
   modules: ["@wxt-dev/module-react"],
+  zip: {
+    // Include the lockfile's pnpm settings without bundling local secrets.
+    dotSources: true,
+    includeSources: [
+      ".npmrc", "*.md", "package.json", "pnpm-lock.yaml", "tsconfig.json",
+      "wxt.config.ts", "LICENSE", "entrypoints/**", "src/**", "public/**",
+      "scripts/**", "assets/**",
+    ],
+  },
   manifest: ({ browser, manifestVersion }) => ({
     name: "Grimoire Companion",
     description: "Save pages to your local Grimoire library.",

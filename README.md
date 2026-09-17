@@ -79,6 +79,22 @@ store duplicate-content rules; it is not the planned production identity.
 
 No store submission is performed by the build commands.
 
+### Rebuilding the Firefox review package
+
+Extract `grimoire-companion-1.0.0-sources.zip` into an empty directory. With
+Node.js 22 and pnpm 10 installed, run from that directory:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm run build:firefox
+```
+
+The output is `.output/firefox-mv2/`. The source archive includes `.npmrc`,
+which must remain beside `pnpm-lock.yaml` for a reproducible installation.
+No environment variables, private packages, or credentials are required.
+This release targets desktop browsers; Firefox for Android and a signed
+Safari app have not been validated for distribution.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
