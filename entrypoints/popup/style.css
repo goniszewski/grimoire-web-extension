@@ -413,3 +413,19 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 @media (prefers-reduced-motion: reduce) {
   .spinner { animation: none; }
 }
+
+.field-hint { margin: -6px 0 0; color: hsl(var(--color-muted)); font-size: 11px; line-height: 1.4; }
+
+/* Firefox for Android opens the popup as a full-screen page: fill the width
+   (centred on tablets), drop the desktop height cap, and enlarge touch targets. */
+:root[data-platform="android"] body { min-width: 0; }
+:root[data-platform="android"] .panel { width: 100%; max-width: 560px; margin-inline: auto; box-shadow: none; }
+:root[data-platform="android"] .capture-panel { max-height: none; }
+:root[data-platform="android"] .tab-list { max-height: 50vh; }
+:root[data-platform="android"] .icon-button,
+:root[data-platform="android"] .compact-button { min-width: 40px; min-height: 40px; }
+:root[data-platform="android"] .tab-row { padding-block: 10px; }
+:root[data-platform="android"] .tab-row input { width: 20px; height: 20px; }
+:root[data-platform="android"] input,
+:root[data-platform="android"] select,
+:root[data-platform="android"] textarea { font-size: 16px; }
