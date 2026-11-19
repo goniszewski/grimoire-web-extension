@@ -63,19 +63,17 @@ consent describes the local Grimoire connection during installation.
 
 ## Store availability
 
-The existing [Chrome Web Store](https://chromewebstore.google.com/detail/grimoire-companion/mbciogjbnegofhhhlcbmlobjcgjdbgfh)
+Companion 1.0.0 is published on the
+[Chrome Web Store](https://chromewebstore.google.com/detail/grimoire-companion/mbciogjbnegofhhhlcbmlobjcgjdbgfh)
 and [Firefox Add-ons](https://addons.mozilla.org/en-GB/firefox/addon/grimoire-companion/)
-listings continue to provide the legacy release until this rewrite is reviewed
-and published. There is no Safari App Store listing yet.
+(Firefox listing last updated 2026-09-17). There is no Safari App Store listing yet.
 
 ## Release strategy
 
-The intended production path is to update the existing Chrome Web Store and
-Firefox Add-ons listings so current users retain the established extension
-identity. Store updates normally replace installed older versions, so the first
-compatible release must include the legacy protocol path and a clear reconnect
-experience. A separate listing may be used for pre-release testing, subject to
-store duplicate-content rules; it is not the planned production identity.
+Production releases update the existing Chrome Web Store and Firefox Add-ons
+listings so current users retain the established extension identity. Store
+updates replace installed older versions, so releases keep the legacy protocol
+path and a clear reconnect experience for existing users.
 
 No store submission is performed by the build commands.
 
