@@ -33,6 +33,11 @@ export default defineConfig({
           required: ["authenticationInfo", "browsingActivity", "websiteContent"],
         },
       },
+      // Every API used is available on Android 120+, but
+      // data_collection_permissions needs Firefox for Android 142.
+      gecko_android: {
+        strict_min_version: "142.0",
+      },
     } } : {}),
     content_security_policy: {
       extension_pages: "script-src 'self'; object-src 'self'",

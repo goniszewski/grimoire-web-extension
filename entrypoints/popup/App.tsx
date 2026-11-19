@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Bookmark, BookOpen, Check, ChevronDown, Folder, Layers3, LoaderCircle, LogOut, Pin, Plus, RefreshCw, Search, Settings, Tag, X } from "lucide-react";
 import { browserIntegrationSettingsUrl, normalizeEndpoint, permissionPattern } from "../../src/lib/endpoint";
+import { bulkTabsNoteFor, defaultEndpointFor, endpointHintFor, endpointPlaceholderFor, type Platform } from "../../src/lib/platform";
 import { getConnection, migrateLegacySyncStorage } from "../../src/lib/storage";
 import type { BackgroundRequest, BackgroundResponse, BatchCaptureResult, CaptureDraft, CaptureResult, ConnectionConfig, ConnectionState, Taxonomy } from "../../src/lib/types";
 
@@ -110,11 +111,11 @@ function BrandHeader({ subtitle, endpoint, onDisconnect }: { subtitle: string; e
   );
 }
 
-export function App() {
+export function App({ platform = "desktop" }: { platform?: Platform }) {
   const [mode, setMode] = useState<"single" | "bulk">("single");
   const [connection, setConnection] = useState<ConnectionConfig | null>(null);
   const [pendingConnection, setPendingConnection] = useState<ConnectionConfig | null>(null);
-  const [endpoint, setEndpoint] = useState("http://127.0.0.1:3210");
+  const [endpoint, setEndpoint] = useState(() => defaultEndpointFor(platform));
   const [discovered, setDiscovered] = useState<ConnectionState | null>(null);
   const [checkedEndpoint, setCheckedEndpoint] = useState<string | null>(null);
   const [token, setToken] = useState("");
@@ -344,8 +345,9 @@ export function App() {
     return (
       <main className="panel setup-panel">
         <BrandHeader subtitle="Connect your private library" />
-        <label className="field-label">Grimoire address<input value={endpoint} onChange={(event) => { setEndpoint(event.target.value); setDiscovered(null); setCheckedEndpoint(null); }} /></label>
-        <button className="secondary-button" disabled={busy} onClick={detect}>Check connection</button>
+        <label className="field-label">Grimoire address<input type="url" inputMode="url" autoCapitalize="off" autoCorrect="off" spellCheck={false} placeholder={endpointPlaceholderFor(platform)} value={endpoint} onChange={(event) => { setEndpoint(event.target.value); setDiscovered(null); setCheckedEndpoint(null); }} /></label>
+        {endpointHintFor(platform) && <p className="field-hint">{endpointHintFor(platform)}</p>}
+        <button className="secondary-button" disabled={busy || !endpoint.trim()} onClick={detect}>Check connection</button>
         {discovered?.kind === "current" && <>
           <div className="notice"><Check size={15} />Grimoire {discovered.version} supports secure Companion capture.</div>
           <label className="field-label">Integration token<input type="password" value={token} onChange={(event) => setToken(event.target.value)} /></label>
@@ -403,6 +405,7 @@ export function App() {
             >{allVisibleTabsSelected ? "Clear visible" : "Select visible"}</button>
           </div>
         </div>
+        {bulkTabsNoteFor(platform) && <p className="field-hint">{bulkTabsNoteFor(platform)}</p>}
         {batchSizeExceeded && (
           <p className="warning">Bulk capture is limited to {MAX_BATCH_SIZE} tabs. Select fewer tabs to continue.</p>
         )}

@@ -90,8 +90,35 @@ pnpm run build:firefox
 The output is `.output/firefox-mv2/`. The source archive includes `.npmrc`,
 which must remain beside `pnpm-lock.yaml` for a reproducible installation.
 No environment variables, private packages, or credentials are required.
-This release targets desktop browsers; Firefox for Android and a signed
-Safari app have not been validated for distribution.
+A signed Safari app has not been validated for distribution.
+
+To try the Android build on a device connected over USB (with USB debugging
+on and Firefox for Android installed):
+
+```bash
+pnpm run build:firefox
+npx web-ext run -t firefox-android --source-dir .output/firefox-mv2 \
+  --android-device <device-id-from-adb-devices>
+```
+
+## Firefox for Android
+
+The Firefox build declares Firefox for Android 142 or newer (needed for the
+data-collection disclosure). On a phone the popup opens full screen, with
+larger touch targets.
+
+- **Use an HTTPS address.** On a phone, `127.0.0.1` and `localhost` mean the
+  phone itself, so the address field starts empty. Enter your Grimoire
+  server's address. Because it isn't loopback, it must use HTTPS: for
+  example a reverse proxy with a certificate, or a private network such as
+  Tailscale with HTTPS.
+- **Make Grimoire reachable from the network.** Grimoire only listens on
+  loopback by default. Container deployments listen on the network
+  automatically; a native install needs `HOST` set to a network address and
+  `ALLOW_NON_LOOPBACK_BIND=1`.
+- **Open tabs may be incomplete.** Firefox for Android can return only some
+  of the open tabs to extensions, so bulk capture may list fewer tabs than are
+  open.
 
 ## License
 
