@@ -63,10 +63,12 @@ consent describes the local Grimoire connection during installation.
 
 ## Store availability
 
-Companion 1.0.0 is published on the
+Companion 1.1.0 is published on the
 [Chrome Web Store](https://chromewebstore.google.com/detail/grimoire-companion/mbciogjbnegofhhhlcbmlobjcgjdbgfh)
-and [Firefox Add-ons](https://addons.mozilla.org/en-GB/firefox/addon/grimoire-companion/)
-(Firefox listing last updated 2026-09-17). There is no Safari App Store listing yet.
+and [Firefox Add-ons](https://addons.mozilla.org/en-GB/firefox/addon/grimoire-companion/).
+The Firefox listing can also be installed from Firefox for Android 142 or newer
+(see [Firefox for Android](#firefox-for-android)). Both listings were last
+updated 2026-11-23. There is no Safari App Store listing yet.
 
 ## Release strategy
 
