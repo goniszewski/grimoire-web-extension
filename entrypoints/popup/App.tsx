@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Bookmark, BookOpen, Check, ChevronDown, Folder, Layers3, LoaderCircle, LogOut, Pin, Plus, RefreshCw, Search, Settings, Tag, X } from "lucide-react";
 import { browserIntegrationSettingsUrl, normalizeEndpoint, permissionPattern } from "../../src/lib/endpoint";
-import { bulkTabsNoteFor, defaultEndpointFor, endpointHintFor, endpointPlaceholderFor, type Platform } from "../../src/lib/platform";
-import { getConnection, migrateLegacySyncStorage } from "../../src/lib/storage";
+import { bulkTabsNoteFor, defaultEndpointFor, endpointHintFor, endpointPlaceholderFor, openTabFromPopup, type Platform } from "../../src/lib/platform";
+import { clearSetupEndpointDraft, getConnection, getSetupEndpointDraft, migrateLegacySyncStorage, setSetupEndpointDraft } from "../../src/lib/storage";
 import type { BackgroundRequest, BackgroundResponse, BatchCaptureResult, CaptureDraft, CaptureResult, ConnectionConfig, ConnectionState, Taxonomy } from "../../src/lib/types";
 
 const MAX_BATCH_SIZE = 500;
@@ -96,14 +96,14 @@ function normalizeTag(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 50);
 }
 
-function BrandHeader({ subtitle, endpoint, onDisconnect }: { subtitle: string; endpoint?: string; onDisconnect?: () => void }) {
+function BrandHeader({ subtitle, endpoint, platform = "desktop", onDisconnect }: { subtitle: string; endpoint?: string; platform?: Platform; onDisconnect?: () => void }) {
   return (
     <header className="brand-header">
       <div className="brand-mark" aria-hidden="true"><img src={browser.runtime.getURL("/icons/icon-32.png")} alt="" /></div>
       <div className="brand-copy"><h1>Grimoire</h1><p>{subtitle}</p></div>
       {onDisconnect && (
         <div className="header-actions">
-          <button type="button" className="icon-button" title="Open Grimoire settings" aria-label="Open Grimoire settings" onClick={() => endpoint && void browser.tabs.create({ url: browserIntegrationSettingsUrl(endpoint) })}><Settings size={16} /></button>
+          <button type="button" className="icon-button" title="Open Grimoire settings" aria-label="Open Grimoire settings" onClick={() => endpoint && void openTabFromPopup(browserIntegrationSettingsUrl(endpoint), platform)}><Settings size={16} /></button>
           <button type="button" className="icon-button" title="Disconnect" aria-label="Disconnect" onClick={onDisconnect}><LogOut size={16} /></button>
         </div>
       )}
@@ -161,7 +161,11 @@ export function App({ platform = "desktop" }: { platform?: Platform }) {
   useEffect(() => {
     void (async () => {
       const saved = await migrateLegacySyncStorage() ?? await getConnection();
-      if (!saved) return;
+      if (!saved) {
+        const draft = await getSetupEndpointDraft();
+        if (draft) setEndpoint(draft);
+        return;
+      }
       setEndpoint(saved.endpoint);
       const origins = [permissionPattern(saved.endpoint)];
       if (await browser.permissions.contains({ origins })) {
@@ -225,6 +229,7 @@ export function App({ platform = "desktop" }: { platform?: Platform }) {
         : await send<ConnectionConfig>({ type: "login-legacy", endpoint: normalizedEndpoint, login, password });
       setConnection(next);
       setPassword("");
+      await clearSetupEndpointDraft();
     });
   }
 
@@ -351,7 +356,10 @@ export function App({ platform = "desktop" }: { platform?: Platform }) {
         {discovered?.kind === "current" && <>
           <div className="notice"><Check size={15} />Grimoire {discovered.version} supports secure Companion capture.</div>
           <label className="field-label">Integration token<input type="password" value={token} onChange={(event) => setToken(event.target.value)} /></label>
-          <button className="text-button" onClick={() => void browser.tabs.create({ url: browserIntegrationSettingsUrl(endpoint) })}>Open Browser Integration settings</button>
+          <button className="text-button" onClick={() => void run(async () => {
+            await setSetupEndpointDraft(endpoint);
+            await openTabFromPopup(browserIntegrationSettingsUrl(endpoint), platform);
+          })}>Open Browser Integration settings</button>
         </>}
         {discovered?.kind === "legacy" && <>
           <div className="warning">Legacy Grimoire {discovered.version}. Compatibility mode is temporary.</div>
@@ -366,7 +374,7 @@ export function App({ platform = "desktop" }: { platform?: Platform }) {
 
   return (
     <main className="panel capture-panel">
-      <BrandHeader subtitle={connection.protocol === "legacy" ? "Legacy compatibility mode" : "Save to your library"} endpoint={connection.endpoint} onDisconnect={disconnect} />
+      <BrandHeader subtitle={connection.protocol === "legacy" ? "Legacy compatibility mode" : "Save to your library"} endpoint={connection.endpoint} platform={platform} onDisconnect={disconnect} />
       <div className="mode-switch" role="tablist" aria-label="Capture mode">
         <button type="button" role="tab" aria-selected={mode === "single"} className={mode === "single" ? "active" : ""} onClick={() => selectMode("single")}><Bookmark size={14} />Current page</button>
         <button type="button" role="tab" aria-selected={mode === "bulk"} className={mode === "bulk" ? "active" : ""} onClick={() => selectMode("bulk")}><Layers3 size={14} />Open tabs</button>
