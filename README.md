@@ -1,12 +1,13 @@
 # Grimoire Companion
 
-Grimoire Companion saves the active browser page to a Grimoire library. The
-version 1.0 targets Grimoire's local daemon and its managed integration
-tokens while retaining a temporary compatibility path for Grimoire 0.5.x.
+Grimoire Companion saves the active browser page to a Grimoire library. Version
+1.x targets Grimoire's local daemon and its managed integration tokens while
+retaining a temporary compatibility path for Grimoire 0.5.x. Version 1.1 adds
+[Firefox for Android](#firefox-for-android).
 
-## Version 1.0
+## Features
 
-- Chrome, Firefox, and Safari web-extension builds from one WXT/React/TypeScript codebase
+- Chrome, Firefox (desktop and Android), and Safari web-extension builds from one WXT/React/TypeScript codebase
 - protocol discovery through the unauthenticated health response
 - authenticated current-Grimoire capability negotiation
 - confirmed capture results, including an honest active-duplicate result
@@ -114,10 +115,12 @@ larger touch targets.
   server's address. Because it isn't loopback, it must use HTTPS: for
   example a reverse proxy with a certificate, or a private network such as
   Tailscale with HTTPS.
-- **Make Grimoire reachable from the network.** Grimoire only listens on
-  loopback by default. Container deployments listen on the network
-  automatically; a native install needs `HOST` set to a network address and
-  `ALLOW_NON_LOOPBACK_BIND=1`.
+- **Keep Grimoire on loopback where you can.** Tailscale Serve or a reverse
+  proxy on the same machine forwards HTTPS traffic to `127.0.0.1:3210`, so
+  Grimoire doesn't need to listen on the network. See the
+  [remote access guide](https://goniszewski.com/grimoire/06-remote-access).
+  Only a proxy on another machine needs Grimoire on a network address: a
+  native install then needs `HOST` and `ALLOW_NON_LOOPBACK_BIND=1`.
 - **Open tabs may be incomplete.** Firefox for Android can return only some
   of the open tabs to extensions, so bulk capture may list fewer tabs than are
   open.
