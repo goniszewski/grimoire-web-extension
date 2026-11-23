@@ -79,7 +79,7 @@ No store submission is performed by the build commands.
 
 ### Rebuilding the Firefox review package
 
-Extract `grimoire-companion-1.0.0-sources.zip` into an empty directory. With
+Extract `grimoire-companion-<version>-sources.zip` (for example `grimoire-companion-1.1.0-sources.zip`) into an empty directory. With
 Node.js 22 and pnpm 10 installed, run from that directory:
 
 ```bash

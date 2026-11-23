@@ -4,6 +4,25 @@ All notable changes to Grimoire Companion will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.1.0] - 2026-11-23
+
+### Added
+- Firefox for Android support (Firefox for Android 142 or newer). On a phone
+  the popup opens full screen with larger touch targets, and the setup screen
+  asks for the HTTPS address of your Grimoire server instead of prefilling
+  `127.0.0.1`, which points at the phone itself.
+- A note in bulk capture on Android that Firefox may list only some open tabs.
+
+### Fixed
+- On Firefox for Android, opening Grimoire settings from the popup now shows
+  the new tab instead of opening it hidden behind the popup. The address typed
+  during setup is kept while you create a token.
+- The bulk capture button reads "Save 1 tab" for a single tab.
+
+### Security
+- Updated development and build dependencies (Vite, Vitest, WXT) to patched
+  versions. These tools are not part of the installed extension.
+
 ## [1.0.0] - 2026-09-07
 
 ### Added
