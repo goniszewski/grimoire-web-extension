@@ -21,6 +21,10 @@ interface OpenTabDetails extends PageDetails {
   active: boolean;
 }
 
+export function saveTabsLabel(count: number): string {
+  return `Save ${count} ${count === 1 ? "tab" : "tabs"}`;
+}
+
 export function toggleVisibleTabSelection(
   selectedIds: ReadonlySet<number>,
   visibleIds: readonly number[],
@@ -468,7 +472,7 @@ export function App({ platform = "desktop" }: { platform?: Platform }) {
 
       <footer className="save-footer">
         <button className="primary-button save-button" disabled={busy || (mode === "single" ? !url || !title : selectedTabIds.size === 0 || selectedTabIds.size > MAX_BATCH_SIZE)} onClick={save}>
-          {busy ? <><LoaderCircle className="spinner" size={16} />Saving…</> : mode === "bulk" ? <><Layers3 size={16} />Save {selectedTabIds.size} tabs</> : <><Bookmark size={16} />Save bookmark</>}
+          {busy ? <><LoaderCircle className="spinner" size={16} />Saving…</> : mode === "bulk" ? <><Layers3 size={16} />{saveTabsLabel(selectedTabIds.size)}</> : <><Bookmark size={16} />Save bookmark</>}
         </button>
         {status && <p className="feedback success" role="status">{status}</p>}
         {error && <p className="feedback error" role="alert">{error}</p>}
