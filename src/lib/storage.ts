@@ -3,6 +3,7 @@ import { normalizeEndpoint } from "./endpoint";
 
 const CONNECTION_KEY = "connection-v1";
 const MIGRATION_KEY = "legacy-sync-migration-v1";
+const SETUP_ENDPOINT_DRAFT_KEY = "setup-endpoint-draft-v1";
 
 export async function getConnection(): Promise<ConnectionConfig | null> {
   const values = await browser.storage.local.get(CONNECTION_KEY);
@@ -63,4 +64,23 @@ export async function migrateLegacySyncStorage(): Promise<ConnectionConfig | nul
     await browser.storage.sync.remove(["configuration", "token"]);
   }
   return migrated;
+}
+
+/**
+ * The address typed during setup, kept while the user leaves the popup to
+ * create a token (Firefox for Android closes the popup to show that tab).
+ * Only an address is stored; tokens and passwords never are.
+ */
+export async function getSetupEndpointDraft(): Promise<string> {
+  const values = await browser.storage.local.get(SETUP_ENDPOINT_DRAFT_KEY);
+  const draft = values[SETUP_ENDPOINT_DRAFT_KEY];
+  return typeof draft === "string" ? draft : "";
+}
+
+export async function setSetupEndpointDraft(endpoint: string): Promise<void> {
+  await browser.storage.local.set({ [SETUP_ENDPOINT_DRAFT_KEY]: endpoint });
+}
+
+export async function clearSetupEndpointDraft(): Promise<void> {
+  await browser.storage.local.remove(SETUP_ENDPOINT_DRAFT_KEY);
 }

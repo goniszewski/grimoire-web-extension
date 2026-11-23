@@ -26,8 +26,8 @@ out/
 build/
 dist/
 
-# plasmo
-.plasmo
+# local agent state
+.omc/
 
 # wxt
 .output

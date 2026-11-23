@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { migrateLegacySyncStorage } from "./storage";
+import { clearSetupEndpointDraft, getSetupEndpointDraft, migrateLegacySyncStorage, setSetupEndpointDraft } from "./storage";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -72,5 +72,22 @@ describe("legacy storage migration", () => {
     await expect(migrateLegacySyncStorage()).resolves.toEqual(connection);
     expect(state.syncArea.remove).toHaveBeenCalledWith(["configuration", "token"]);
     expect(state.sync).not.toHaveProperty("token");
+  });
+});
+
+describe("setup endpoint draft", () => {
+  it("round-trips the typed address and clears it after connecting", async () => {
+    const state = installStorage({}, {});
+    expect(await getSetupEndpointDraft()).toBe("");
+    await setSetupEndpointDraft("https://grimoire.example.com");
+    expect(await getSetupEndpointDraft()).toBe("https://grimoire.example.com");
+    expect(Object.keys(state.local)).toEqual(["setup-endpoint-draft-v1"]);
+    await clearSetupEndpointDraft();
+    expect(await getSetupEndpointDraft()).toBe("");
+  });
+
+  it("ignores a non-string stored draft", async () => {
+    installStorage({ "setup-endpoint-draft-v1": 42 }, {});
+    expect(await getSetupEndpointDraft()).toBe("");
   });
 });
